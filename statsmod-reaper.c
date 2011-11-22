@@ -2,7 +2,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 
-//#include "statsmodreaper.h"
+#include "statsmod-reaper.h"
 
 MODULE_LICENSE("GPL");
 
