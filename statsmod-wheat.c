@@ -1,9 +1,5 @@
 #include "statsmod-wheat.h"
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Alberto Esteban <alberto84.eo@gmail.com>, \
-               Bartomeu Miró <bartomeumiro@gmail.com>");
-MODULE_DESCRIPTION("ProSO stats grower");
 
 extern void * sys_call_table[];
 
@@ -13,25 +9,104 @@ int (*sys_write_old)(unsigned int, const char __user *, size_t);
 int (*sys_clone_old)(struct pt_regs regs);
 int (*sys_lseek_old)(unsigned int, off_t, unsigned int);
 
-/* Our custom syscalls to intercept the original ones */
+/* Globals to use less stack ocupation */
+long error;
+unsigned long long time;
+
+
+/****************************************************************************/
+/**************************** Auxiliar functions ****************************/
+/****************************************************************************/
+static inline unsigned long long proso_get_cycles() {
+  unsigned long eax, edx;
+  
+  proso_rdtsc(eax, edx);
+  return ((unsinged long long edx <<32) + eax;
+}
+
+void save_stats(int func) {
+  current_thread_info()->land_where_wheat_grows[func].total++;
+  
+  if (error > 0) {
+    current_thread_info()->land_where_wheat_grows[func].sucess++;
+  } else {
+    current_thread_info()->land_where_wheat_grows[func].fail += time;
+  }
+}
+
+void intercept_sys_calls() {
+  sys_open_old = sys_call_table[__NR_OPEN];
+  sys_write_old = sys_call_table[__NR_WRITE];
+  sys_clone_old = sys_call_table[__NR_CLONE];
+  sys_close_old = sys_call_table[__NR_CLOSE];
+  sys_lseek_old = sys_call_table[__NR_LSEEK];
+  
+  sys_call_table[__NR_OPEN] = sys_open_local;
+  sys_call_table[__NR_WRITE] = sys_write_local;
+  sys_call_table[__NR_CLONE] = sys_clone_local;
+  sys_call_table[__NR_CLOSE] = sys_close_local;
+  sys_call_table[__NR_LSEEK] = sys_lseek_local;
+}
+
+void restore_sys_calls() {
+  sys_call_table[__NR_OPEN] = sys_open_old;
+  sys_call_table[__NR_WRITE] = sys_write_old;
+  sys_call_table[__NR_CLONE] = sys_clone_old;
+  sys_call_table[__NR_CLOSE] = sys_close_old;
+  sys_call_table[__NR_LSEEK] = sys_lseek_old;
+}
+
+/****************************************************************************/
+/************ Our custom syscalls to intercept the original ones ************/
+/****************************************************************************/
 long sys_open_local(const char __user * filename, int flags, int mode) {
-  return sys_open_old(filename, flags, mode);
+  time = proso_get_cycles();
+  error = sys_open_old(filename, flags, mode);
+  time = proso_get_cycles() - time;
+  
+  save_stats(OPEN);
+  
+  return error;
 }
 
 long sys_close_local(unsigned int fd) {
-  return sys_close_old(fd);
+  time = proso_get_cycles();
+  error = sys_close_old(fd);
+  time = proso_get_cycles() - time;
+  
+  save_stats(CLOSE);
+  
+  return error;
 }
 
 ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count) {
-  return sys_write_old(fd, buf, count);
+  time = proso_get_cycles();
+  error = sys_write_old(fd, buf, count);
+  time = proso_get_cycles() - time;
+
+  save_stats(WRITE);
+  
+  return error;
 }
 
 int sys_clone_local(struct pt_regs regs) {
-  return sys_clone_old(regs);
+  time = proso_get_cycles();
+  error = sys_clone_old(regs);
+  time = proso_get_cycles() - time;
+
+  save_stats(CLONE);
+  
+  return error;
 }
 
 off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
-  return sys_lseek_old(fd, offset, origin);
+  time = proso_get_cycles();
+  error = sys_lseek_old(fd, offset, origin);
+  time = proso_get_cycles() - time;
+
+  save_stats(LSEEK);
+  
+  return error;
 }
 
 /* Module inicialization */
@@ -49,18 +124,7 @@ static int __init statsmodwheat_init(void) {
   printk(KERN_DEBUG "\t Task struct fields initialized.");
   
   /* Intercepting sys_call. Don't be evil, unlike Google */
-  sys_open_old = sys_call_table[POS_SYSCALL_OPEN];
-  sys_write_old = sys_call_table[POS_SYSCALL_WRITE];
-  sys_clone_old = sys_call_table[POS_SYSCALL_CLONE];
-  sys_close_old = sys_call_table[POS_SYSCALL_CLOSE];
-  sys_lseek_old = sys_call_table[POS_SYSCALL_LSEEK];
-  
-  sys_call_table[POS_SYSCALL_OPEN] = sys_open_local;
-  sys_call_table[POS_SYSCALL_WRITE] = sys_write_local;
-  sys_call_table[POS_SYSCALL_CLONE] = sys_clone_local;
-  sys_call_table[POS_SYSCALL_CLOSE] = sys_close_local;
-  sys_call_table[POS_SYSCALL_LSEEK] = sys_lseek_local;
-
+  intercept_sys_calls();
   printk(KERN_DEBUG "\t Syscalls intercepted.");
   
   printk(KERN_DEBUG "Wheat planted, waiting until it grows...");
