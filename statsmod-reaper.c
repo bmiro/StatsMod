@@ -1,3 +1,4 @@
+#include <linux/moduleparam.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -5,6 +6,9 @@
 #include "statsmod-reaper.h"
 
 MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Alberto Esteban <alberto84.eo@gmail.com>, \
+               Bartomeu Miró <bartomeumiro@gmail.com>");
+MODULE_DESCRIPTION("ProSO stats grower");
 
 static int __init statsmodreaper_init(void) {
   /* Codi d’inicialització */
