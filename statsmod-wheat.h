@@ -23,7 +23,7 @@ typedef struct {
   unsigned long total;
   unsigned long success;
   unsigned long fail;
-  unsigned long time;
+  unsigned long long time;
 } groove;
 
 typedef struct {
@@ -31,3 +31,23 @@ typedef struct {
   struct groove land_where_wheat_grows[NUM_INTERCEPTED_CALLS];
   int pid;
 } my_thread_info;
+
+/** Given a process pid and the function to monitor it returns the stats
+ * in the given pointer.
+ * @return:
+ *         0 if success
+ *         -ESRCH if pid doesn't exist
+ *         -EINVAL if syscall is invalid
+ *         -EFAULT if the buffer is not correct 
+ */
+int get_stats(my_thread_info t_info*, int pid, int syscall);
+
+int freeze_stats();
+int microwave_stats();
+
+/** Resets the stats of the given pid.
+ * @return:
+ *        0 if success
+ *        -ESRCH if pid doesn't exist
+ */
+int reset_stats();
