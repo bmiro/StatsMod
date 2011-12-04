@@ -1,3 +1,6 @@
+#ifndef __statsmod_whead_h__
+#define __statsmod_whead_h__
+
 #include <linux/moduleparam.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -12,8 +15,7 @@
 
 #define NUM_INTERCEPTED_CALLS 5
 
-#define proso_rdtsc(low,high) \
-__asm__ __volatile__("rdtsc" : "=a" (low), "=d" (high))
+#define proso_rdtsc(low,high) __asm__ __volatile__("rdtsc" : "=a" (low), "=d" (high))
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alberto Esteban <alberto84.eo@gmail.com>, Bartomeu Miró <bartomeumiro@gmail.com>");
@@ -28,9 +30,14 @@ typedef struct {
 
 typedef struct {
   struct thread_info thread_info_old;
-  struct groove land_where_wheat_grows[NUM_INTERCEPTED_CALLS];
+  groove land_where_wheat_grows[NUM_INTERCEPTED_CALLS];
   int pid;
 } my_thread_info;
+
+typedef struct {
+  long pos;
+  int (*call)();
+} t_old_syscall;
 
 /** Given a process pid and the function to monitor it returns the stats
  * in the given pointer.
@@ -40,9 +47,20 @@ typedef struct {
  *         -EINVAL if syscall is invalid
  *         -EFAULT if the buffer is not correct 
  */
-int get_stats(my_thread_info t_info*, int pid, int syscall);
+int get_stats(my_thread_info *t_info, int pid, int syscall);
 
+/** Stops recording the statistics. 
+ * @return:
+ *        0 if success
+ *        -1 if error (already stoped)
+ */
 int freeze_stats();
+
+/** Continues recording the statistics. 
+ * @return:
+ *        0 if success
+ *        -1 if error (already started)
+ */
 int microwave_stats();
 
 /** Resets the stats of the given pid.
@@ -50,4 +68,6 @@ int microwave_stats();
  *        0 if success
  *        -ESRCH if pid doesn't exist
  */
-int reset_stats();
+int reset_stats(pid_t pid);
+
+#endif
