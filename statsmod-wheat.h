@@ -17,6 +17,11 @@
 
 #define proso_rdtsc(low,high) __asm__ __volatile__("rdtsc" : "=a" (low), "=d" (high))
 
+#define current_thread_stats ((my_thread_info*)current_thread_info())->land_where_wheat_grows
+
+/* These symbol must be exported by the kernel */
+extern void *sys_call_table[];
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alberto Esteban <alberto84.eo@gmail.com>, Bartomeu Miró <bartomeumiro@gmail.com>");
 MODULE_DESCRIPTION("ProSO stats grower");
@@ -54,14 +59,14 @@ int get_stats(my_thread_info *t_info, int pid, int syscall);
  *        0 if success
  *        -1 if error (already stoped)
  */
-int freeze_stats();
+int freeze_stats(void);
 
 /** Continues recording the statistics. 
  * @return:
  *        0 if success
  *        -1 if error (already started)
  */
-int microwave_stats();
+int microwave_stats(void);
 
 /** Resets the stats of the given pid.
  * @return:

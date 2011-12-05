@@ -1,7 +1,5 @@
 #include "statsmod-wheat.h"
 
-extern void *sys_call_table[];
-
 /** Backuped original syscall function array */
 t_old_syscall syscall_old[NUM_INTERCEPTED_CALLS];
 
@@ -28,7 +26,7 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin);
 /****************************************************************************/
 /**************************** Auxiliar functions ****************************/
 /****************************************************************************/
-static inline unsigned long long proso_get_cycles() {
+static inline unsigned long long proso_get_cycles(void) {
   unsigned long eax, edx;
   
   proso_rdtsc(eax,edx);
@@ -36,16 +34,16 @@ static inline unsigned long long proso_get_cycles() {
 }
 
 void save_stats(int syscall) {
-  ((my_thread_info*)current_thread_info())->land_where_wheat_grows[syscall].total++;
+  current_thread_stats[syscall].total++;
   if (error < 0) {
-    ((my_thread_info*)current_thread_info())->land_where_wheat_grows[syscall].fail++;
+    current_thread_stats[syscall].fail++;
   } else {
-    ((my_thread_info*)current_thread_info())->land_where_wheat_grows[syscall].success++;
+    current_thread_stats[syscall].success++;
   }
-  ((my_thread_info*)current_thread_info())->land_where_wheat_grows[syscall].time += time;
+  current_thread_stats[syscall].time += time;
 }
 
-void init_syscall_arrays() {
+void init_syscall_arrays(void) {
   syscall_old[OPEN].pos = __NR_open;
   syscall_old[LSEEK].pos = __NR_lseek;
   syscall_old[CLONE].pos = __NR_clone;
@@ -59,7 +57,7 @@ void init_syscall_arrays() {
   syscall_local[WRITE] = sys_write_local;
 }
 
-void intercept_sys_calls() {  
+void intercept_sys_calls(void) {  
   for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
     syscall_old[i].call = sys_call_table[syscall_old[i].pos];
   }
@@ -69,7 +67,7 @@ void intercept_sys_calls() {
   }
 }
 
-void restore_sys_calls() {
+void restore_sys_calls(void) {
   for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
     sys_call_table[syscall_old[i].pos] = syscall_old[i].call;
   }
@@ -135,7 +133,7 @@ int get_stats(my_thread_info *t_info, int pid, int syscall) {
   return 0;
 }
 
-int freeze_stats() {
+int freeze_stats(void) {
   if (!enabled) {
     return -1;
   }
@@ -144,7 +142,7 @@ int freeze_stats() {
   return 0;
 }
 
-int microwave_stats() {
+int microwave_stats(void) {
   if (enabled) {
     return -1;
   }
