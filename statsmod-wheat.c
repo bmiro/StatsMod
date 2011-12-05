@@ -26,6 +26,7 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin);
 /****************************************************************************/
 /**************************** Auxiliar functions ****************************/
 /****************************************************************************/
+/** @return: long long with precise epoc from hardware */
 static inline unsigned long long proso_get_cycles(void) {
   unsigned long eax, edx;
   
@@ -33,7 +34,11 @@ static inline unsigned long long proso_get_cycles(void) {
   return ((unsigned long long) edx <<32) + eax;
 }
 
-void save_stats(int syscall) {
+/** Saves stats of the current syscall of the current thread.
+ * @time: time consumed defined as global variable in order to use less stack
+ * @error: result of the syscall defined as global variable in order to use less stack
+ */
+void save_current_stats(int syscall) {
   current_thread_stats[syscall].total++;
   if (error < 0) {
     current_thread_stats[syscall].fail++;
@@ -42,6 +47,11 @@ void save_stats(int syscall) {
   }
   current_thread_stats[syscall].time += time;
 }
+
+// void stats_check_and_set(struct task_struct *tsk) {
+//   tsk->pid
+//   tsk->thread_info
+// }
 
 void init_syscall_arrays(void) {
   syscall_old[OPEN].pos = __NR_open;
@@ -129,7 +139,19 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
 /****************************************************************************/
 /***************************** Public interface *****************************/
 /****************************************************************************/
-int get_stats(my_thread_info *t_info, int pid, int syscall) {
+int get_stats(my_thread_info *t_info, pid_t pid, int syscall) {
+  struct task_struct *tsk;
+  
+  if (syscall < 0 || NUM_INTERCEPTED_CALLS < syscall) return -EINVAL;
+  if (!access_ok(VERIFY_WRITE, t_info, sizeof(my_thread_info))) return -EFAULT;
+  
+  tsk = find_task_by_pid(pid)
+  if (tsk == NULL) return -ESRCH;
+
+  stats_check_and_set(tsk);
+  
+  copy_to_user(t_info, task_to_thread_stats(tsk)[syscall], sizeof(my_thread_info));
+  
   return 0;
 }
 

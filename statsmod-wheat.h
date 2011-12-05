@@ -16,8 +16,9 @@
 #define NUM_INTERCEPTED_CALLS 5
 
 #define proso_rdtsc(low,high) __asm__ __volatile__("rdtsc" : "=a" (low), "=d" (high))
-
-#define current_thread_stats ((my_thread_info*)current_thread_info())->land_where_wheat_grows
+#define current_thread_stats  (my_thread_info*)current_thread_info())->land_where_wheat_grows
+#define pid_thread_stats(pid) ((my_thread_info*)find_task_by_pid(pid)->thread_info)->land_where_wheat_grows
+#define task_to_thread_stats(tsk) ((my_thread_info*)tsk->thread_info)->land_where_wheat_grows
 
 /* These symbol must be exported by the kernel */
 extern void *sys_call_table[];
@@ -52,7 +53,7 @@ typedef struct {
  *         -EINVAL if syscall is invalid
  *         -EFAULT if the buffer is not correct 
  */
-int get_stats(my_thread_info *t_info, int pid, int syscall);
+int get_stats(my_thread_info *t_info, pid_t pid, int syscall);
 
 /** Stops recording the statistics. 
  * @return:
