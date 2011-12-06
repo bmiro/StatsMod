@@ -40,6 +40,7 @@ static inline unsigned long long proso_get_cycles(void) {
  */
 void save_current_stats(int syscall) {
   current_thread_stats[syscall].total++;
+  
   if (error < 0) {
     current_thread_stats[syscall].fail++;
   } else {
@@ -48,10 +49,18 @@ void save_current_stats(int syscall) {
   current_thread_stats[syscall].time += time;
 }
 
-// void stats_check_and_set(struct task_struct *tsk) {
-//   tsk->pid
-//   tsk->thread_info
-// }
+int stats_check_and_set(struct task_struct *tsk, int syscall) {
+  if (tsk->pid == task_to_thread_pid(tsk)) return 0;
+  
+  task_to_thread_stats(tsk)[syscall].total = 0;
+  task_to_thread_stats(tsk)[syscall].fail = 0;
+  task_to_thread_stats(tsk)[syscall].success = 0;
+  task_to_thread_stats(tsk)[syscall].time = 0;
+  
+  task_to_thread_pid(tsk) = tsk->pid;
+ 
+  return 0;
+}
 
 void init_syscall_arrays(void) {
   syscall_old[OPEN].pos = __NR_open;
@@ -91,7 +100,8 @@ long sys_open_local(const char __user * filename, int flags, int mode) {
   error = syscall_old[OPEN].call(filename, flags, mode);
   time = proso_get_cycles() - time;
   
-  save_stats(OPEN);
+  stats_check_and_set(current, OPEN);
+  save_current_stats(OPEN);
   
   return error;
 }
@@ -101,7 +111,8 @@ long sys_close_local(unsigned int fd) {
   error = syscall_old[CLOSE].call(fd);
   time = proso_get_cycles() - time;
   
-  save_stats(CLOSE);
+  stats_check_and_set(current, CLOSE);
+  save_current_stats(CLOSE);
   
   return error;
 }
@@ -111,7 +122,8 @@ ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count) 
   error = syscall_old[WRITE].call(fd, buf, count);
   time = proso_get_cycles() - time;
 
-  save_stats(WRITE);
+  stats_check_and_set(current, WRITE);
+  save_current_stats(WRITE);
   
   return error;
 }
@@ -121,7 +133,8 @@ int sys_clone_local(struct pt_regs regs) {
   error = syscall_old[CLONE].call(regs);
   time = proso_get_cycles() - time;
 
-  save_stats(CLONE);
+  stats_check_and_set(current, CLONE);
+  save_current_stats(CLONE);
   
   return error;
 }
@@ -131,7 +144,8 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
   error = syscall_old[LSEEK].call(fd, offset, origin);
   time = proso_get_cycles() - time;
 
-  save_stats(LSEEK);
+  stats_check_and_set(current, LSEEK);
+  save_current_stats(LSEEK);
   
   return error;
 }
@@ -141,18 +155,22 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
 /****************************************************************************/
 int get_stats(my_thread_info *t_info, pid_t pid, int syscall) {
   struct task_struct *tsk;
+  int thi_size;
+  
+  thi_size = sizeof(my_thread_info);
   
   if (syscall < 0 || NUM_INTERCEPTED_CALLS < syscall) return -EINVAL;
-  if (!access_ok(VERIFY_WRITE, t_info, sizeof(my_thread_info))) return -EFAULT;
+  if (!access_ok(VERIFY_WRITE, t_info, thi_size)) return -EFAULT;
   
-  tsk = find_task_by_pid(pid)
+  tsk = find_task_by_pid(pid);
   if (tsk == NULL) return -ESRCH;
 
-  stats_check_and_set(tsk);
+  /* If not inizcialized will the copy_to_user will copy 0 not rubish */
+  stats_check_and_set(tsk, syscall);
   
-  copy_to_user(t_info, task_to_thread_stats(tsk)[syscall], sizeof(my_thread_info));
+  error = copy_to_user(t_info, &(task_to_thread_stats(tsk)[syscall]), thi_size);
   
-  return 0;
+  return error;
 }
 
 int freeze_stats(void) {
@@ -173,11 +191,17 @@ int microwave_stats(void) {
   return 0;
 }
 
-int reset_stats(pid_t pid) {
-//   something->land_where_wheat_grows[syscall].total = 0;
-//   something->land_where_wheat_grows[syscall].fail = 0;
-//   something->land_where_wheat_grows[syscall].success = 0;
-//   something->land_where_wheat_grows[syscall].time = 0;
+int reset_stats(pid_t pid, int syscall) {
+  struct task_struct *tsk;
+
+  tsk = find_task_by_pid(pid);
+  if (tsk == NULL) return -ESRCH;
+    
+  task_to_thread_stats(tsk)[syscall].total = 0;
+  task_to_thread_stats(tsk)[syscall].fail = 0;
+  task_to_thread_stats(tsk)[syscall].success = 0;
+  task_to_thread_stats(tsk)[syscall].time = 0;
+  
   return 0;
 }
 
@@ -185,17 +209,17 @@ int reset_stats(pid_t pid) {
 /************************* Module control (ins/rm) **************************/
 /****************************************************************************/
 static int __init statsmodwheat_init(void) {
-  printk(KERN_DEBUG "Aboning land...");
+  printk(KERN_DEBUG "Aboning land...\n");
   init_syscall_arrays();
 
-  printk(KERN_DEBUG "Starting the wheat planting...");
+  printk(KERN_DEBUG "Starting the wheat planting...\n");
 
   /* Intercepting sys_call. Don't be evil, unlike Google */
   intercept_sys_calls();
   enabled = 1;
-  printk(KERN_DEBUG "\t Syscalls intercepted.");
+  printk(KERN_DEBUG "\t Syscalls intercepted.\n");
   
-  printk(KERN_DEBUG "Wheat planted, waiting until it grows...");
+  printk(KERN_DEBUG "Wheat planted, waiting until it grows...\n");
   return 0;
 }
 

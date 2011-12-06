@@ -6,6 +6,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <asm/unistd.h>
+#include <asm/uaccess.h>
 
 #define OPEN  0
 #define LSEEK 1
@@ -16,9 +17,10 @@
 #define NUM_INTERCEPTED_CALLS 5
 
 #define proso_rdtsc(low,high) __asm__ __volatile__("rdtsc" : "=a" (low), "=d" (high))
-#define current_thread_stats  (my_thread_info*)current_thread_info())->land_where_wheat_grows
-#define pid_thread_stats(pid) ((my_thread_info*)find_task_by_pid(pid)->thread_info)->land_where_wheat_grows
-#define task_to_thread_stats(tsk) ((my_thread_info*)tsk->thread_info)->land_where_wheat_grows
+#define current_thread_stats  ((my_thread_info*)current_thread_info())->land_where_wheat_grows
+//#define pid_thread_stats(pid) ((my_thread_info*)find_task_by_pid(pid)->thread_info)->land_where_wheat_grows
+#define task_to_thread_stats(tsk) ((my_thread_info*)((tsk)->thread_info))->land_where_wheat_grows
+#define task_to_thread_pid(tsk) ((my_thread_info*)((tsk)->thread_info))->pid
 
 /* These symbol must be exported by the kernel */
 extern void *sys_call_table[];
@@ -52,6 +54,7 @@ typedef struct {
  *         -ESRCH if pid doesn't exist
  *         -EINVAL if syscall is invalid
  *         -EFAULT if the buffer is not correct 
+ *	   Positive number means that there are remaining bytes to copy
  */
 int get_stats(my_thread_info *t_info, pid_t pid, int syscall);
 
@@ -74,6 +77,6 @@ int microwave_stats(void);
  *        0 if success
  *        -ESRCH if pid doesn't exist
  */
-int reset_stats(pid_t pid);
+int reset_stats(pid_t pid, int syscall);
 
 #endif
