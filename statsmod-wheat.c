@@ -54,14 +54,14 @@ void save_current_stats(int syscall) {
 
 int stats_check_and_set(struct task_struct *tsk, int syscall) {
   if (tsk->pid == task_to_thread_pid(tsk)) return 0;
-  
+
   task_to_thread_stats(tsk)[syscall].total = 0;
   task_to_thread_stats(tsk)[syscall].fail = 0;
   task_to_thread_stats(tsk)[syscall].success = 0;
   task_to_thread_stats(tsk)[syscall].time = 0;
-  
+
   task_to_thread_pid(tsk) = tsk->pid;
- 
+
   return 0;
 }
 
@@ -257,6 +257,45 @@ static int __init statsmodwheat_init(void) {
 }
 
 static void __exit statsmodwheat_exit(void) {
+
+  tsk = find_task_by_pid(pid);
+
+  for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
+    switch (i) {
+    case :
+
+      break;
+
+    case :
+      break;
+
+    case :
+      break;
+    case :
+      break;
+    case :
+    default:
+    }
+
+
+    if () {
+    } else {
+      printk();
+    }
+  }
+
+
+  stats_check_and_set(tsk, i);
+
+  task_to_thread_stats(tsk)[syscall].total
+  task_to_thread_stats(tsk)[syscall].fail 
+  task_to_thread_stats(tsk)[syscall].success 
+  task_to_thread_stats(tsk)[syscall].time 
+  
+  task_to_thread_pid(tsk) = tsk->pid
+
+
+
   restore_sys_calls();
   enabled = 0;
 }
