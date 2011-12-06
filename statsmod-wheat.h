@@ -29,6 +29,9 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alberto Esteban <alberto84.eo@gmail.com>, Bartomeu Miró <bartomeumiro@gmail.com>");
 MODULE_DESCRIPTION("ProSO stats grower");
 
+module_param(pid, pid_t, 0);
+MODULE_PARAM_DESC(pid, "Procces wich stats will be printed and the module exit.");
+
 typedef struct {
   unsigned long total;
   unsigned long success;
