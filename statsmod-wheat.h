@@ -14,7 +14,7 @@
 #define CLOSE 3
 #define WRITE 4
 
-#define SYSCALL_NAME_LEN 6
+#define SYSCALL_NAME_LEN 8
 
 #define NUM_INTERCEPTED_CALLS 5
 

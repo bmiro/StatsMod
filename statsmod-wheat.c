@@ -59,8 +59,8 @@ int stats_check_and_set(struct task_struct *tsk) {
     task_to_thread_stats(tsk)[i].time = 0;
   }
 
-  ((my_thread_info*)(tsk->thread_info))->pid = tsk->pid;
-
+  ((my_thread_info*)((tsk)->thread_info))->pid = tsk->pid;
+  
   return 0;
 }
 
@@ -98,7 +98,9 @@ void restore_sys_calls(void) {
 /************ Our custom syscalls to intercept the original ones ************/
 /****************************************************************************/
 long sys_open_local(const char __user * filename, int flags, int mode) {
+  
   try_module_get(THIS_MODULE);
+  
   time = proso_get_cycles();
   error = syscall_old[OPEN].call(filename, flags, mode);
   time = proso_get_cycles() - time;
@@ -107,12 +109,12 @@ long sys_open_local(const char __user * filename, int flags, int mode) {
   save_current_stats(OPEN);
 
   module_put(THIS_MODULE);
-
   return error;
 }
 
 long sys_close_local(unsigned int fd) {
   try_module_get(THIS_MODULE);
+  
   time = proso_get_cycles();
   error = syscall_old[CLOSE].call(fd);
   time = proso_get_cycles() - time;
@@ -121,12 +123,13 @@ long sys_close_local(unsigned int fd) {
   save_current_stats(CLOSE);
 
   module_put(THIS_MODULE);
-
   return error;
 }
 
 ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count) {
+  
   try_module_get(THIS_MODULE);
+  
   time = proso_get_cycles();
   error = syscall_old[WRITE].call(fd, buf, count);
   time = proso_get_cycles() - time;
@@ -135,12 +138,13 @@ ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count) 
   save_current_stats(WRITE);
 
   module_put(THIS_MODULE);
-
   return error;
 }
 
 int sys_clone_local(struct pt_regs regs) {
+  
   try_module_get(THIS_MODULE);
+  
   time = proso_get_cycles();
   error = syscall_old[CLONE].call(regs);
   time = proso_get_cycles() - time;
@@ -149,12 +153,13 @@ int sys_clone_local(struct pt_regs regs) {
   save_current_stats(CLONE);
 
   module_put(THIS_MODULE);
-
   return error;
 }
 
 off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
+  
   try_module_get(THIS_MODULE);
+  
   time = proso_get_cycles();
   error = syscall_old[LSEEK].call(fd, offset, origin);
   time = proso_get_cycles() - time;
@@ -163,14 +168,13 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
   save_current_stats(LSEEK);
 
   module_put(THIS_MODULE);
-
   return error;
 }
 
 /****************************************************************************/
 /***************************** Public interface *****************************/
 /****************************************************************************/
-int get_stats(my_thread_info *t_info, pid_t pid, int syscall) {
+int get_stats(my_thread_info *t_info, pid_t desitred_pid, int syscall) {
   struct task_struct *tsk;
   int thi_size;
 
@@ -179,7 +183,7 @@ int get_stats(my_thread_info *t_info, pid_t pid, int syscall) {
   if (syscall < 0 || NUM_INTERCEPTED_CALLS < syscall) return -EINVAL;
   if (!access_ok(VERIFY_WRITE, t_info, thi_size)) return -EFAULT;
 
-  tsk = find_task_by_pid(pid);
+  tsk = find_task_by_pid(desitred_pid);
   if (tsk == NULL) return -ESRCH;
 
   try_module_get(THIS_MODULE);
@@ -219,10 +223,10 @@ int microwave_stats(void) {
   return 0;
 }
 
-int reset_stats(pid_t pid, int syscall) {
+int reset_stats(pid_t desitred_pid, int syscall) {
   struct task_struct *tsk;
 
-  tsk = find_task_by_pid(pid);
+  tsk = find_task_by_pid(desitred_pid);
   if (tsk == NULL) return -ESRCH;
 
   try_module_get(THIS_MODULE);
@@ -283,12 +287,11 @@ static void __exit statsmodwheat_exit(void) {
         strcpy(sc_name, "UNKWN");
     }
 
-      printk(KERN_DEBUG "Pid %d\n", task_to_thread_pid(tsk));
+    printk(KERN_DEBUG "Pid: %d %d\n", task_to_thread_pid(tsk), pid);
 
     if (tsk->pid != task_to_thread_pid(tsk)) {
       printk(KERN_DEBUG "The %s syscall isn't initialized\n", sc_name);
     } else {
-      printk(KERN_DEBUG "%d", 234982405);
       printk(KERN_DEBUG "%s syscall:\n Total: %d\n Success: %d\n Fail: %d\n Mean time: %d\n",
                           sc_name,
                           task_to_thread_stats(tsk)[i].total,
