@@ -14,6 +14,8 @@
 #define CLOSE 3
 #define WRITE 4
 
+#define SYSCALL_NAME_LEN 6
+
 #define NUM_INTERCEPTED_CALLS 5
 
 #define proso_rdtsc(low,high) __asm__ __volatile__("rdtsc" : "=a" (low), "=d" (high))
@@ -25,12 +27,14 @@
 /* These symbol must be exported by the kernel */
 extern void *sys_call_table[];
 
+int pid = 1;
+module_param(pid, int, 0);
+MODULE_PARM_DESC(pid,"Procces wich stats will be printed and the module exit.");
+
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Alberto Esteban <alberto84.eo@gmail.com>, Bartomeu Miró <bartomeumiro@gmail.com>");
+MODULE_AUTHOR("Alberto Esteban <alberto84.eo@gmail.com>, Bartomeu Miró <bartomeumiro@gmail.com> {[JJ06]}");
 MODULE_DESCRIPTION("ProSO stats grower");
 
-module_param(pid, pid_t, 0);
-MODULE_PARAM_DESC(pid, "Procces wich stats will be printed and the module exit.");
 
 typedef struct {
   unsigned long total;
