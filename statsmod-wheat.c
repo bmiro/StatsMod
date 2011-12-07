@@ -29,7 +29,7 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin);
 /** @return: long long with precise epoc from hardware */
 static inline unsigned long long proso_get_cycles(void) {
   unsigned long eax, edx;
-  
+
   proso_rdtsc(eax,edx);
   return ((unsigned long long) edx <<32) + eax;
 }
@@ -51,7 +51,7 @@ void save_current_stats(int syscall) {
 
 int stats_check_and_set(struct task_struct *tsk) {
   if (tsk->pid == task_to_thread_pid(tsk)) return 0;
-  
+
   for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
     task_to_thread_stats(tsk)[i].total = 0;
     task_to_thread_stats(tsk)[i].fail = 0;
@@ -59,10 +59,8 @@ int stats_check_and_set(struct task_struct *tsk) {
     task_to_thread_stats(tsk)[i].time = 0;
   }
 
-  printk(KERN_DEBUG "Old thread pid %d\n", ((my_thread_info*)(tsk->thread_info))->pid);
   ((my_thread_info*)(tsk->thread_info))->pid = tsk->pid;
-  printk(KERN_DEBUG "New thread pid %d\n", ((my_thread_info*)(tsk->thread_info))->pid);
-  
+
   return 0;
 }
 
@@ -192,7 +190,6 @@ int get_stats(my_thread_info *t_info, pid_t pid, int syscall) {
   error = copy_to_user(t_info, &(task_to_thread_stats(tsk)[syscall]), thi_size);
 
   module_put(THIS_MODULE);
-
   return error;
 }
 
@@ -268,33 +265,32 @@ static void __exit statsmodwheat_exit(void) {
   for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
     switch (i) {
       case WRITE:
-    //    sc_name = "WRITE";
+        strcpy(sc_name, "WRITE");
         break;
       case CLONE:
-    //    sc_name = "CLONE";
+        strcpy(sc_name, "CLONE");
         break;
       case CLOSE:
-    //    sc_name = "CLOSE";
+        strcpy(sc_name, "CLOSE");
         break;
       case LSEEK:
-    //    sc_name  = "LSEEK";
+        strcpy(sc_name, "LSEEK");
         break;
       case OPEN:
-    //    sc_name = "OPEN ";
+        strcpy(sc_name, "OPEN");
         break;
       default:
-    //    sc_name = "UNKNO";
-          ;
+        strcpy(sc_name, "UNKWN");
     }
 
       printk(KERN_DEBUG "Pid %d\n", task_to_thread_pid(tsk));
 
     if (tsk->pid != task_to_thread_pid(tsk)) {
-      printk(KERN_DEBUG "The %s syscall isn't initialized\n", "MENGANO");
+      printk(KERN_DEBUG "The %s syscall isn't initialized\n", sc_name);
     } else {
       printk(KERN_DEBUG "%d", 234982405);
       printk(KERN_DEBUG "%s syscall:\n Total: %d\n Success: %d\n Fail: %d\n Mean time: %d\n",
-                          "MENGANO",
+                          sc_name,
                           task_to_thread_stats(tsk)[i].total,
                           task_to_thread_stats(tsk)[i].success,
                           task_to_thread_stats(tsk)[i].fail,
