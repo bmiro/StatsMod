@@ -4,16 +4,17 @@
 #include <stdlib.h>
 
 #define BUFF_SIZE 256
+#define CMD_SIZE 100
 
 int main() {
   pid_t selfpid;
   FILE *fpipe;
 
-  //char cmd_insmod[] = "insmod statsmod-wheat.ko pid=";
-  char cmd_insmod[] = "echo > b";
-
   char buff[BUFF_SIZE];
-  char c;
+  //char cmd_insmod[] = "insmod statsmod-wheat.ko pid=%d 2>&1";
+  char cmd_insmod[] = "insmod statsmod-wheat.ko 2>&1";
+  char cmd[CMD_SIZE];
+  //char cmd_insmod[] = "echo > b";
 
   printf("Wheat module test\n\n");
 
@@ -23,10 +24,11 @@ int main() {
   printf("\tWaiting for user interation (Please press ENTER to continue)\n");
   getchar();
 
-  //sprintf(cmd_insmod, "%s%d", cmd_insmod, selfpid);
-  printf("\tModule insmod test, running command: %s\n", cmd_insmod);
+  //sprintf(cmd, cmd_insmod, selfpid);
+  sprintf(cmd, cmd_insmod);
+  printf("\tModule insmod test, running command: %s\n", cmd);
 
-  if (!(fpipe = (FILE*)popen(cmd_insmod, "r"))) {
+  if (!(fpipe = (FILE*)popen(cmd, "r"))) {
     perror("\tProblem calling ismod\n");
     pclose(fpipe);
     exit(1);
