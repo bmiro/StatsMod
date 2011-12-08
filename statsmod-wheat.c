@@ -76,9 +76,9 @@ static void __exit statsmodwheat_exit(void) {
         strcpy(sc_name, "UNKWN");
     }
 
-    printk(KERN_DEBUG "[smw] Pid: %d %d\n", task_to_thread_pid(tsk), pid);
+    printk(KERN_DEBUG "[smw] Pid: %d %d\n", task_to_my_thread_pid(tsk), pid);
 
-    if (tsk->pid != task_to_thread_pid(tsk)) {
+    if (tsk->pid != task_to_my_thread_pid(tsk)) {
       printk(KERN_DEBUG "[smw] The %s syscall isn't initialized\n", sc_name);
     } else {
       printk(KERN_DEBUG "[smw] %s syscall:\n", sc_name);
@@ -133,7 +133,7 @@ int stats_check_and_set(struct task_struct *tsk) {
   int i;
   //TODO ensure that tsk is valid?
 
-  if (tsk->pid == task_to_thread_pid(tsk)) return 0;
+  if (tsk->pid == task_to_my_thread_pid(tsk)) return 0;
 
   for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
     task_to_thread_stats(tsk)[i].total = 0;
@@ -142,7 +142,7 @@ int stats_check_and_set(struct task_struct *tsk) {
     task_to_thread_stats(tsk)[i].time = 0;
   }
 
-  ((struct my_thread_info*)((tsk)->thread_info))->pid = tsk->pid;
+  task_to_my_thread_pid(tsk) = tsk->pid;
 
   return 0;
 }
@@ -154,11 +154,11 @@ void init_syscall_arrays(void) {
   syscall_old[CLOSE].pos = __NR_close;
   syscall_old[WRITE].pos = __NR_write;
 
-  syscall_local[OPEN] = sys_open_local;
-  syscall_local[LSEEK] = sys_lseek_local;
-  syscall_local[CLONE] = sys_clone_local;
-  syscall_local[CLOSE] = sys_close_local;
-  syscall_local[WRITE] = sys_write_local;
+  syscall_local[OPEN] = (int (*)(void))sys_open_local;
+  syscall_local[LSEEK] = (int (*)(void))sys_lseek_local;
+  syscall_local[CLONE] = (int (*)(void))sys_clone_local;
+  syscall_local[CLOSE] = (int (*)(void))sys_close_local;
+  syscall_local[WRITE] = (int (*)(void))sys_write_local;
 }
 
 void intercept_sys_calls(void) {
@@ -187,7 +187,7 @@ long sys_open_local(const char __user * filename, int flags, int mode) {
 
   try_module_get(THIS_MODULE);
 
-  opn = (long (*)(const char __user *, int, int))syscall_old[OPEN];
+  opn = (long (*)(const char __user *, int, int))syscall_old[OPEN].call;
 
   time = proso_get_cycles();
   error = opn(filename, flags, mode);
@@ -208,7 +208,7 @@ long sys_close_local(unsigned int fd) {
 
   try_module_get(THIS_MODULE);
 
-  cls = (long (*)(unsigned int))syscall_old[CLOSE];
+  cls = (long (*)(unsigned int))syscall_old[CLOSE].call;
 
   time = proso_get_cycles();
   error = cls(fd);
@@ -229,7 +229,7 @@ ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count) 
 
   try_module_get(THIS_MODULE);
 
-  wrt = (ssize_t (*)(unsigned int, const char __user *, size_t))syscall_old[WRITE];
+  wrt = (ssize_t (*)(unsigned int, const char __user *, size_t))syscall_old[WRITE].call;
 
   time = proso_get_cycles();
   error = wrt(fd, buf, count);
@@ -250,7 +250,7 @@ int sys_clone_local(struct pt_regs regs) {
 
   try_module_get(THIS_MODULE);
 
-  cln = (int (*)(struct pt_regs))syscall_old[CLONE];
+  cln = (int (*)(struct pt_regs))syscall_old[CLONE].call;
 
   time = proso_get_cycles();
   error = cln(regs);
@@ -271,7 +271,7 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
 
   try_module_get(THIS_MODULE);
 
-  lsk = (off_t (*)(unsigned int, off_t, unsigned int))syscall_old[LSEEK];
+  lsk = (off_t (*)(unsigned int, off_t, unsigned int))syscall_old[LSEEK].call;
 
   time = proso_get_cycles();
   error = lsk(fd, offset, origin);

@@ -22,7 +22,7 @@
 #define current_thread_stats  ((struct my_thread_info*)current_thread_info())->land_where_wheat_grows
 //#define pid_thread_stats(pid) ((my_thread_info*)find_task_by_pid(pid)->thread_info)->land_where_wheat_grows
 #define task_to_thread_stats(tsk) ((struct my_thread_info*)((tsk)->thread_info))->land_where_wheat_grows
-#define task_to_thread_pid(tsk) ((struct my_thread_info*)((tsk)->thread_info))->pid
+#define task_to_my_thread_pid(tsk) ((struct my_thread_info*)(task_thread_info(tsk)))->pid
 
 static int __init statsmodwheat_init(void);
 static void __exit statsmodwheat_exit(void);
@@ -52,10 +52,10 @@ struct my_thread_info {
   int pid;
 };
 
-// struct t_old_syscall{
-//   long pos;
-//   int (*call)(void);
-// };
+struct t_old_syscall{
+  long pos;
+  int (*call)(void);
+};
 
 /** Given a process pid and the function to monitor it returns the stats
  * in the given pointer.
