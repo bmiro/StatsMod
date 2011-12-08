@@ -8,12 +8,7 @@ int (*syscall_old[NUM_INTERCEPTED_CALLS])(void);
 int (*syscall_local[NUM_INTERCEPTED_CALLS])(void);
 
 /* Module status 0 for disabled, 1 for enabled */
-char enabled;
-
-/* Globals to use less stack */
-unsigned long long time;
-long error;
-int i;
+//char enabled;
 
 /****************************************************************************/
 /********************** Needed anticipated definitions **********************/
@@ -24,7 +19,7 @@ void intercept_sys_calls(void);
 void restore_sys_calls(void);
 static inline unsigned long long proso_get_cycles(void);
 int valid_intercepted_syscall(int syscall);
-int save_current_stats(int syscall);
+int save_current_stats(int syscall, unsigned long long time, int error);
 int stats_check_and_set(struct task_struct *tsk);
 /************ Our custom syscalls to intercept the original ones ************/
 long sys_open_local(const char __user * filename, int flags, int mode);
@@ -44,7 +39,7 @@ static int __init statsmodwheat_init(void) {
 
   /* Intercepting sys_call. Don't be evil, unlike Google */
   intercept_sys_calls();
-  enabled = 1;
+  //enabled = 1;
   printk(KERN_DEBUG "[smw] \t Syscalls intercepted.\n");
 
   printk(KERN_DEBUG "[smw] Wheat planted, waiting until it grows...\n");
@@ -52,6 +47,8 @@ static int __init statsmodwheat_init(void) {
 }
 
 static void __exit statsmodwheat_exit(void) {
+  int i;
+
   //char sc_name[SYSCALL_NAME_LEN];
   struct task_struct *tsk;
 
@@ -94,7 +91,7 @@ static void __exit statsmodwheat_exit(void) {
   }
 
   restore_sys_calls();
-  enabled = 0;
+  //enabled = 0;
 }
 
 /****************************************************************************/
@@ -118,7 +115,7 @@ int valid_syscall(int syscall) {
  * @time: time consumed defined as global variable in order to use less stack
  * @error: result of the syscall defined as global variable in order to use less stack
  */
-int save_current_stats(int syscall) {
+int save_current_stats(int syscall, unsigned long long time, int error) {
   if (!valid_syscall(syscall)) return -1;
 
   current_thread_stats[syscall].total++;
@@ -134,7 +131,7 @@ int save_current_stats(int syscall) {
 }
 
 int stats_check_and_set(struct task_struct *tsk) {
-
+  int i;
   //TODO ensure that tsk is valid?
 
   if (tsk->pid == task_to_thread_pid(tsk)) return 0;
@@ -165,7 +162,8 @@ void init_syscall_arrays(void) {
 //   syscall_local[WRITE] = sys_write_local;
 }
 
-void intercept_sys_calls(void) {  
+void intercept_sys_calls(void) {
+//   int i;
 //   for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
 //     syscall_old[i].call = sys_call_table[syscall_old[i].pos];
 //     sys_call_table[syscall_old[i].pos] = syscall_local[i];
@@ -185,6 +183,7 @@ void intercept_sys_calls(void) {
 }
 
 void restore_sys_calls(void) {
+//   int i;
 //   for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
 //     sys_call_table[syscall_old[i].pos] = syscall_old[i].call;
 //   }
@@ -200,6 +199,9 @@ void restore_sys_calls(void) {
 /************ Our custom syscalls to intercept the original ones ************/
 /****************************************************************************/
 long sys_open_local(const char __user * filename, int flags, int mode) {
+  unsigned long long time;
+  int error;
+
   long (*opn)(const char __user *, int, int);
 
   try_module_get(THIS_MODULE);
@@ -211,13 +213,16 @@ long sys_open_local(const char __user * filename, int flags, int mode) {
   time = proso_get_cycles() - time;
 
   stats_check_and_set(current);
-  save_current_stats(OPEN);
+  save_current_stats(OPEN, time, error);
 
   module_put(THIS_MODULE);
   return error;
 }
 
 long sys_close_local(unsigned int fd) {
+  unsigned long long time;
+  int error;
+
   long (*cls)(unsigned int);
 
   try_module_get(THIS_MODULE);
@@ -229,13 +234,16 @@ long sys_close_local(unsigned int fd) {
   time = proso_get_cycles() - time;
 
   stats_check_and_set(current);
-  save_current_stats(CLOSE);
+  save_current_stats(CLOSE, time, error);
 
   module_put(THIS_MODULE);
   return error;
 }
 
 ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count) {
+  unsigned long long time;
+  int error;
+
   ssize_t (*wrt)(unsigned int, const char __user *, size_t);
 
   try_module_get(THIS_MODULE);
@@ -247,13 +255,16 @@ ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count) 
   time = proso_get_cycles() - time;
 
   stats_check_and_set(current);
-  save_current_stats(WRITE);
+  save_current_stats(WRITE, time, error);
 
   module_put(THIS_MODULE);
   return error;
 }
 
 int sys_clone_local(struct pt_regs regs) {
+  unsigned long long time;
+  int error;
+
   int (*cln)(struct pt_regs);
 
   try_module_get(THIS_MODULE);
@@ -265,13 +276,16 @@ int sys_clone_local(struct pt_regs regs) {
   time = proso_get_cycles() - time;
 
   stats_check_and_set(current);
-  save_current_stats(CLONE);
+  save_current_stats(CLONE, time, error);
 
   module_put(THIS_MODULE);
   return error;
 }
 
 off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
+  unsigned long long time;
+  int error;
+
   off_t (*lsk)(unsigned int, off_t, unsigned int);
 
   try_module_get(THIS_MODULE);
@@ -283,7 +297,7 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
   time = proso_get_cycles() - time;
 
   stats_check_and_set(current);
-  save_current_stats(LSEEK);
+  save_current_stats(LSEEK, time, error);
 
   module_put(THIS_MODULE);
   return error;
@@ -295,6 +309,7 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
 int get_stats(struct my_thread_info *t_info, pid_t desitred_pid, int syscall) {
   struct task_struct *tsk;
   int thi_size;
+  int error;
 
   thi_size = sizeof(struct my_thread_info);
 
@@ -317,12 +332,12 @@ int get_stats(struct my_thread_info *t_info, pid_t desitred_pid, int syscall) {
 
 int freeze_stats(void) {
   try_module_get(THIS_MODULE);
-  if (!enabled) {
-    module_put(THIS_MODULE);
-    return -1;
-  }
+//   if (!enabled) {
+//     module_put(THIS_MODULE);
+//     return -1;
+//   }
   restore_sys_calls();
-  enabled = 0;
+//   enabled = 0;
 
   module_put(THIS_MODULE);
   return 0;
@@ -330,12 +345,12 @@ int freeze_stats(void) {
 
 int microwave_stats(void) {
   try_module_get(THIS_MODULE);
-  if (enabled) {
-    module_put(THIS_MODULE);
-    return -1;
-  }
+//   if (enabled) {
+//     module_put(THIS_MODULE);
+//     return -1;
+//   }
   intercept_sys_calls();
-  enabled = 1;
+//   enabled = 1;
 
   module_put(THIS_MODULE);
   return 0;
