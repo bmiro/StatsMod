@@ -18,11 +18,84 @@ int i;
 /****************************************************************************/
 /********************** Needed anticipated definitions **********************/
 /****************************************************************************/
+/**************************** Auxiliar functions ****************************/
+void init_syscall_arrays(void);
+void intercept_sys_calls(void);
+void restore_sys_calls(void);
+static inline unsigned long long proso_get_cycles(void);
+int valid_intercepted_syscall(int syscall);
+int save_current_stats(int syscall);
+int stats_check_and_set(struct task_struct *tsk);
+/************ Our custom syscalls to intercept the original ones ************/
 long sys_open_local(const char __user * filename, int flags, int mode);
 long sys_close_local(unsigned int fd);
 ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count);
 int sys_clone_local(struct pt_regs regs);
 off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin);
+
+/****************************************************************************/
+/************************* Module control (ins/rm) **************************/
+/****************************************************************************/
+static int __init statsmodwheat_init(void) {
+  printk(KERN_DEBUG "[smw] Aboning land...\n");
+  init_syscall_arrays();
+
+  printk(KERN_DEBUG "[smw] Starting the wheat planting...\n");
+
+  /* Intercepting sys_call. Don't be evil, unlike Google */
+  intercept_sys_calls();
+  enabled = 1;
+  printk(KERN_DEBUG "[smw] \t Syscalls intercepted.\n");
+
+  printk(KERN_DEBUG "[smw] Wheat planted, waiting until it grows...\n");
+  return 0;
+}
+
+static void __exit statsmodwheat_exit(void) {
+  //char sc_name[SYSCALL_NAME_LEN];
+  struct task_struct *tsk;
+
+  printk(KERN_DEBUG "[smw] Bye!\n");
+
+  tsk = find_task_by_pid(pid);
+
+  for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
+//     switch (i) {
+//       case WRITE:
+//         strcpy(sc_name, "WRITE");
+//         break;
+//       case CLONE:
+//         strcpy(sc_name, "CLONE");
+//         break;
+//       case CLOSE:
+//         strcpy(sc_name, "CLOSE");
+//         break;
+//       case LSEEK:
+//         strcpy(sc_name, "LSEEK");
+//         break;
+//       case OPEN:
+//         strcpy(sc_name, "OPEN");
+//         break;
+//       default:
+//         strcpy(sc_name, "UNKWN");
+//     }
+
+    printk(KERN_DEBUG "[smw] Pid: %d %d\n", task_to_thread_pid(tsk), pid);
+
+    if (tsk->pid != task_to_thread_pid(tsk)) {
+      //printk(KERN_DEBUG "[smw] The %s syscall isn't initialized\n", sc_name);
+    } else {
+      //printk(KERN_DEBUG "[smw] %s syscall:\n", sc_name);
+      printk(KERN_DEBUG "[smw] Total: %lu\n", task_to_thread_stats(tsk)[i].total);
+      printk(KERN_DEBUG "[smw] Success: %lu\n", task_to_thread_stats(tsk)[i].success);
+      printk(KERN_DEBUG "[smw] Fail: %lu\n", task_to_thread_stats(tsk)[i].fail);
+      printk(KERN_DEBUG "[smw] Mean time: %llu\n", task_to_thread_stats(tsk)[i].time);
+    }
+  }
+
+  restore_sys_calls();
+  enabled = 0;
+}
 
 /****************************************************************************/
 /**************************** Auxiliar functions ****************************/
@@ -131,7 +204,7 @@ long sys_open_local(const char __user * filename, int flags, int mode) {
 
   try_module_get(THIS_MODULE);
 
-  opn = syscall_old[OPEN];
+  opn = (long (*)(const char __user *, int, int))syscall_old[OPEN];
 
   time = proso_get_cycles();
   error = opn(filename, flags, mode);
@@ -149,7 +222,7 @@ long sys_close_local(unsigned int fd) {
 
   try_module_get(THIS_MODULE);
 
-  cls = syscall_old[CLOSE];
+  cls = (long (*)(unsigned int))syscall_old[CLOSE];
 
   time = proso_get_cycles();
   error = cls(fd);
@@ -167,7 +240,7 @@ ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count) 
 
   try_module_get(THIS_MODULE);
 
-  wrt = syscall_old[WRITE];
+  wrt = (ssize_t (*)(unsigned int, const char __user *, size_t))syscall_old[WRITE];
 
   time = proso_get_cycles();
   error = wrt(fd, buf, count);
@@ -181,11 +254,11 @@ ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count) 
 }
 
 int sys_clone_local(struct pt_regs regs) {
-  int (*cln) (struct pt_regs);
+  int (*cln)(struct pt_regs);
 
   try_module_get(THIS_MODULE);
 
-  cln = syscall_old[CLONE];
+  cln = (int (*)(struct pt_regs))syscall_old[CLONE];
 
   time = proso_get_cycles();
   error = cln(regs);
@@ -203,7 +276,7 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
 
   try_module_get(THIS_MODULE);
 
-  lsk = syscall_old[LSEEK];
+  lsk = (off_t (*)(unsigned int, off_t, unsigned int))syscall_old[LSEEK];
 
   time = proso_get_cycles();
   error = lsk(fd, offset, origin);
@@ -285,70 +358,6 @@ int reset_stats(pid_t desitred_pid, int syscall) {
 
   module_put(THIS_MODULE);
   return 0;
-}
-
-/****************************************************************************/
-/************************* Module control (ins/rm) **************************/
-/****************************************************************************/
-static int __init statsmodwheat_init(void) {
-  printk(KERN_DEBUG "[smw] Aboning land...\n");
-  init_syscall_arrays();
-
-  printk(KERN_DEBUG "[smw] Starting the wheat planting...\n");
-
-  /* Intercepting sys_call. Don't be evil, unlike Google */
-  intercept_sys_calls();
-  enabled = 1;
-  printk(KERN_DEBUG "[smw] \t Syscalls intercepted.\n");
-
-  printk(KERN_DEBUG "[smw] Wheat planted, waiting until it grows...\n");
-  return 0;
-}
-
-static void __exit statsmodwheat_exit(void) {
-  //char sc_name[SYSCALL_NAME_LEN];
-  struct task_struct *tsk;
-
-  printk(KERN_DEBUG "[smw] Bye!\n");
-
-  tsk = find_task_by_pid(pid);
-
-  for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
-//     switch (i) {
-//       case WRITE:
-//         strcpy(sc_name, "WRITE");
-//         break;
-//       case CLONE:
-//         strcpy(sc_name, "CLONE");
-//         break;
-//       case CLOSE:
-//         strcpy(sc_name, "CLOSE");
-//         break;
-//       case LSEEK:
-//         strcpy(sc_name, "LSEEK");
-//         break;
-//       case OPEN:
-//         strcpy(sc_name, "OPEN");
-//         break;
-//       default:
-//         strcpy(sc_name, "UNKWN");
-//     }
-
-    printk(KERN_DEBUG "[smw] Pid: %d %d\n", task_to_thread_pid(tsk), pid);
-
-    if (tsk->pid != task_to_thread_pid(tsk)) {
-      //printk(KERN_DEBUG "[smw] The %s syscall isn't initialized\n", sc_name);
-    } else {
-      //printk(KERN_DEBUG "[smw] %s syscall:\n", sc_name);
-      printk(KERN_DEBUG "[smw] Total: %lu\n", task_to_thread_stats(tsk)[i].total);
-      printk(KERN_DEBUG "[smw] Success: %lu\n", task_to_thread_stats(tsk)[i].success);
-      printk(KERN_DEBUG "[smw] Fail: %lu\n", task_to_thread_stats(tsk)[i].fail);
-      printk(KERN_DEBUG "[smw] Mean time: %llu\n", task_to_thread_stats(tsk)[i].time);
-    }
-  }
-
-  restore_sys_calls();
-  enabled = 0;
 }
 
 module_init(statsmodwheat_init);

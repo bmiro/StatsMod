@@ -14,15 +14,18 @@
 #define CLOSE 3
 #define WRITE 4
 
-#define SYSCALL_NAME_LEN 8
-
 #define NUM_INTERCEPTED_CALLS 5
+
+#define SYSCALL_NAME_LEN 8
 
 #define proso_rdtsc(low,high) __asm__ __volatile__("rdtsc" : "=a" (low), "=d" (high))
 #define current_thread_stats  ((struct my_thread_info*)current_thread_info())->land_where_wheat_grows
 //#define pid_thread_stats(pid) ((my_thread_info*)find_task_by_pid(pid)->thread_info)->land_where_wheat_grows
 #define task_to_thread_stats(tsk) ((struct my_thread_info*)((tsk)->thread_info))->land_where_wheat_grows
 #define task_to_thread_pid(tsk) ((struct my_thread_info*)((tsk)->thread_info))->pid
+
+static int __init statsmodwheat_init(void);
+static void __exit statsmodwheat_exit(void);
 
 /* These symbol must be exported by the kernel */
 extern void *sys_call_table[];
@@ -85,5 +88,10 @@ int microwave_stats(void);
  *        -ESRCH if pid doesn't exist
  */
 int reset_stats(pid_t pid, int syscall);
+
+// EXPORT_SYMBOL(get_stats);
+// EXPORT_SYMBOL(freeze_stats);
+// EXPORT_SYMBOL(microwave_stats);
+// EXPORT_SYMBOL(reset_stats);
 
 #endif
