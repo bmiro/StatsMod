@@ -1,7 +1,8 @@
 #include "statsmod-wheat.h"
 
 /** Backuped original syscall function array */
-t_old_syscall syscall_old[NUM_INTERCEPTED_CALLS];
+//struct t_old_syscall syscall_old[NUM_INTERCEPTED_CALLS];
+int (*syscall_old[NUM_INTERCEPTED_CALLS])(void);
 
 /** Itercepted syscall function array */
 int (*syscall_local[NUM_INTERCEPTED_CALLS])(void);
@@ -72,36 +73,54 @@ int stats_check_and_set(struct task_struct *tsk) {
     task_to_thread_stats(tsk)[i].time = 0;
   }
 
-  ((my_thread_info*)((tsk)->thread_info))->pid = tsk->pid;
+  ((struct my_thread_info*)((tsk)->thread_info))->pid = tsk->pid;
 
   return 0;
 }
 
 void init_syscall_arrays(void) {
-  syscall_old[OPEN].pos = __NR_open;
-  syscall_old[LSEEK].pos = __NR_lseek;
-  syscall_old[CLONE].pos = __NR_clone;
-  syscall_old[CLOSE].pos = __NR_close;
-  syscall_old[WRITE].pos = __NR_write;
+//   syscall_old[OPEN].pos = __NR_open;
+//   syscall_old[LSEEK].pos = __NR_lseek;
+//   syscall_old[CLONE].pos = __NR_clone;
+//   syscall_old[CLOSE].pos = __NR_close;
+//   syscall_old[WRITE].pos = __NR_write;
 
-  syscall_local[OPEN] = sys_open_local;
-  syscall_local[LSEEK] = sys_lseek_local;
-  syscall_local[CLONE] = sys_clone_local;
-  syscall_local[CLOSE] = sys_close_local;
-  syscall_local[WRITE] = sys_write_local;
+//   syscall_local[OPEN] = sys_open_local;
+//   syscall_local[LSEEK] = sys_lseek_local;
+//   syscall_local[CLONE] = sys_clone_local;
+//   syscall_local[CLOSE] = sys_close_local;
+//   syscall_local[WRITE] = sys_write_local;
 }
 
 void intercept_sys_calls(void) {  
-  for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
-    syscall_old[i].call = sys_call_table[syscall_old[i].pos];
-    sys_call_table[syscall_old[i].pos] = syscall_local[i];
-  }
+//   for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
+//     syscall_old[i].call = sys_call_table[syscall_old[i].pos];
+//     sys_call_table[syscall_old[i].pos] = syscall_local[i];
+//   }
+  syscall_old[OPEN] = sys_call_table[__NR_open];
+  syscall_old[LSEEK] = sys_call_table[__NR_lseek];
+  syscall_old[CLONE] = sys_call_table[__NR_clone];
+  syscall_old[CLOSE] = sys_call_table[__NR_close];
+  syscall_old[WRITE] = sys_call_table[__NR_write];
+
+  sys_call_table[__NR_open] = sys_open_local;
+  sys_call_table[__NR_lseek] = sys_lseek_local;
+  sys_call_table[__NR_clone] = sys_clone_local;
+  sys_call_table[__NR_close] = sys_close_local;
+  sys_call_table[__NR_write] = sys_write_local;
+
 }
 
 void restore_sys_calls(void) {
-  for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
-    sys_call_table[syscall_old[i].pos] = syscall_old[i].call;
-  }
+//   for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
+//     sys_call_table[syscall_old[i].pos] = syscall_old[i].call;
+//   }
+  sys_call_table[__NR_open] = syscall_old[OPEN];
+  sys_call_table[__NR_lseek] = syscall_old[LSEEK];
+  sys_call_table[__NR_clone] = syscall_old[CLONE];
+  sys_call_table[__NR_close] = syscall_old[CLOSE];
+  sys_call_table[__NR_write] = syscall_old[WRITE];
+
 }
 
 /****************************************************************************/
@@ -112,7 +131,7 @@ long sys_open_local(const char __user * filename, int flags, int mode) {
 
   try_module_get(THIS_MODULE);
 
-  opn = syscall_old[OPEN].call;
+  opn = syscall_old[OPEN];
 
   time = proso_get_cycles();
   error = opn(filename, flags, mode);
@@ -130,7 +149,7 @@ long sys_close_local(unsigned int fd) {
 
   try_module_get(THIS_MODULE);
 
-  cls = syscall_old[CLOSE].call;
+  cls = syscall_old[CLOSE];
 
   time = proso_get_cycles();
   error = cls(fd);
@@ -148,7 +167,7 @@ ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count) 
 
   try_module_get(THIS_MODULE);
 
-  wrt = syscall_old[WRITE].call;
+  wrt = syscall_old[WRITE];
 
   time = proso_get_cycles();
   error = wrt(fd, buf, count);
@@ -166,7 +185,7 @@ int sys_clone_local(struct pt_regs regs) {
 
   try_module_get(THIS_MODULE);
 
-  cln = syscall_old[CLONE].call;
+  cln = syscall_old[CLONE];
 
   time = proso_get_cycles();
   error = cln(regs);
@@ -184,7 +203,7 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
 
   try_module_get(THIS_MODULE);
 
-  lsk = syscall_old[LSEEK].call;
+  lsk = syscall_old[LSEEK];
 
   time = proso_get_cycles();
   error = lsk(fd, offset, origin);
@@ -200,11 +219,11 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
 /****************************************************************************/
 /***************************** Public interface *****************************/
 /****************************************************************************/
-int get_stats(my_thread_info *t_info, pid_t desitred_pid, int syscall) {
+int get_stats(struct my_thread_info *t_info, pid_t desitred_pid, int syscall) {
   struct task_struct *tsk;
   int thi_size;
 
-  thi_size = sizeof(my_thread_info);
+  thi_size = sizeof(struct my_thread_info);
 
   if (!valid_syscall(syscall))return -EINVAL;
   if (!access_ok(VERIFY_WRITE, t_info, thi_size)) return -EFAULT;

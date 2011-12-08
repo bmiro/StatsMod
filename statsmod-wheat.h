@@ -19,10 +19,10 @@
 #define NUM_INTERCEPTED_CALLS 5
 
 #define proso_rdtsc(low,high) __asm__ __volatile__("rdtsc" : "=a" (low), "=d" (high))
-#define current_thread_stats  ((my_thread_info*)current_thread_info())->land_where_wheat_grows
+#define current_thread_stats  ((struct my_thread_info*)current_thread_info())->land_where_wheat_grows
 //#define pid_thread_stats(pid) ((my_thread_info*)find_task_by_pid(pid)->thread_info)->land_where_wheat_grows
-#define task_to_thread_stats(tsk) ((my_thread_info*)((tsk)->thread_info))->land_where_wheat_grows
-#define task_to_thread_pid(tsk) ((my_thread_info*)((tsk)->thread_info))->pid
+#define task_to_thread_stats(tsk) ((struct my_thread_info*)((tsk)->thread_info))->land_where_wheat_grows
+#define task_to_thread_pid(tsk) ((struct my_thread_info*)((tsk)->thread_info))->pid
 
 /* These symbol must be exported by the kernel */
 extern void *sys_call_table[];
@@ -36,23 +36,23 @@ MODULE_AUTHOR("Alberto Esteban <alberto84.eo@gmail.com>, Bartomeu Miró <bartome
 MODULE_DESCRIPTION("ProSO stats grower");
 
 
-typedef struct {
+struct groove {
   unsigned long total;
   unsigned long success;
   unsigned long fail;
   unsigned long long time;
-} groove;
+};
 
-typedef struct {
+struct my_thread_info {
   struct thread_info thread_info_old;
-  groove land_where_wheat_grows[NUM_INTERCEPTED_CALLS];
+  struct groove land_where_wheat_grows[NUM_INTERCEPTED_CALLS];
   int pid;
-} my_thread_info;
+};
 
-typedef struct {
-  long pos;
-  int (*call)(void);
-} t_old_syscall;
+// struct t_old_syscall{
+//   long pos;
+//   int (*call)(void);
+// };
 
 /** Given a process pid and the function to monitor it returns the stats
  * in the given pointer.
@@ -63,7 +63,7 @@ typedef struct {
  *         -EFAULT if the buffer is not correct 
  *	   Positive number means that there are remaining bytes to copy
  */
-int get_stats(my_thread_info *t_info, pid_t pid, int syscall);
+int get_stats(struct my_thread_info *t_info, pid_t pid, int syscall);
 
 /** Stops recording the statistics. 
  * @return:
