@@ -79,16 +79,16 @@ static void __exit statsmodwheat_exit(void) {
           strcpy(sc_name, "UNKWN");
       }
 
-      printk(KERN_DEBUG "[smw] Pid: %d %d\n", task_to_my_thread_pid(tsk), pid);
+      printk(KERN_DEBUG "[smw] \n");
 
       if (tsk->pid != task_to_my_thread_pid(tsk)) {
         printk(KERN_DEBUG "[smw] The %s syscall isn't initialized\n", sc_name);
       } else {
         printk(KERN_DEBUG "[smw] %s syscall:\n", sc_name);
-        printk(KERN_DEBUG "[smw] Total: %lu\n", task_to_thread_stats(tsk)[i].total);
-        printk(KERN_DEBUG "[smw] Success: %lu\n", task_to_thread_stats(tsk)[i].success);
-        printk(KERN_DEBUG "[smw] Fail: %lu\n", task_to_thread_stats(tsk)[i].fail);
-        printk(KERN_DEBUG "[smw] Mean time: %llu\n", task_to_thread_stats(tsk)[i].time);
+        printk(KERN_DEBUG "[smw] \tTotal: %lu\n", task_to_thread_stats(tsk)[i].total);
+        printk(KERN_DEBUG "[smw] \tSuccess: %lu\n", task_to_thread_stats(tsk)[i].success);
+        printk(KERN_DEBUG "[smw] \tFail: %lu\n", task_to_thread_stats(tsk)[i].fail);
+        printk(KERN_DEBUG "[smw] \tMean time: %llu\n", task_to_thread_stats(tsk)[i].time);
       }
     }
   }
@@ -111,7 +111,7 @@ static inline unsigned long long proso_get_cycles(void) {
 /** Check if the specified syscall is intercepted or not accorting
  *  @return 1 if valid 0 if not */
 int valid_syscall(int syscall) {
-  return (0 < syscall) && (syscall < NUM_INTERCEPTED_CALLS);
+  return (-1 < syscall) && (syscall < NUM_INTERCEPTED_CALLS);
 }
 
 /** Saves stats of the current syscall of the current thread.
