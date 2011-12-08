@@ -55,37 +55,41 @@ static void __exit statsmodwheat_exit(void) {
 
   tsk = find_task_by_pid(pid);
 
-  for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
-    switch (i) {
-      case WRITE:
-        strcpy(sc_name, "WRITE");
-        break;
-      case CLONE:
-        strcpy(sc_name, "CLONE");
-        break;
-      case CLOSE:
-        strcpy(sc_name, "CLOSE");
-        break;
-      case LSEEK:
-        strcpy(sc_name, "LSEEK");
-        break;
-      case OPEN:
-        strcpy(sc_name, "OPEN");
-        break;
-      default:
-        strcpy(sc_name, "UNKWN");
-    }
+  if (tsk == NULL) {
+    printk(KERN_DEBUG "[smw] The %d pid is in heaven.\n", pid);
+  } else {
+    for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
+      switch (i) {
+        case WRITE:
+          strcpy(sc_name, "WRITE");
+          break;
+        case CLONE:
+          strcpy(sc_name, "CLONE");
+          break;
+        case CLOSE:
+          strcpy(sc_name, "CLOSE");
+          break;
+        case LSEEK:
+          strcpy(sc_name, "LSEEK");
+          break;
+        case OPEN:
+          strcpy(sc_name, "OPEN");
+          break;
+        default:
+          strcpy(sc_name, "UNKWN");
+      }
 
-    printk(KERN_DEBUG "[smw] Pid: %d %d\n", task_to_my_thread_pid(tsk), pid);
+      printk(KERN_DEBUG "[smw] Pid: %d %d\n", task_to_my_thread_pid(tsk), pid);
 
-    if (tsk->pid != task_to_my_thread_pid(tsk)) {
-      printk(KERN_DEBUG "[smw] The %s syscall isn't initialized\n", sc_name);
-    } else {
-      printk(KERN_DEBUG "[smw] %s syscall:\n", sc_name);
-      printk(KERN_DEBUG "[smw] Total: %lu\n", task_to_thread_stats(tsk)[i].total);
-      printk(KERN_DEBUG "[smw] Success: %lu\n", task_to_thread_stats(tsk)[i].success);
-      printk(KERN_DEBUG "[smw] Fail: %lu\n", task_to_thread_stats(tsk)[i].fail);
-      printk(KERN_DEBUG "[smw] Mean time: %llu\n", task_to_thread_stats(tsk)[i].time);
+      if (tsk->pid != task_to_my_thread_pid(tsk)) {
+        printk(KERN_DEBUG "[smw] The %s syscall isn't initialized\n", sc_name);
+      } else {
+        printk(KERN_DEBUG "[smw] %s syscall:\n", sc_name);
+        printk(KERN_DEBUG "[smw] Total: %lu\n", task_to_thread_stats(tsk)[i].total);
+        printk(KERN_DEBUG "[smw] Success: %lu\n", task_to_thread_stats(tsk)[i].success);
+        printk(KERN_DEBUG "[smw] Fail: %lu\n", task_to_thread_stats(tsk)[i].fail);
+        printk(KERN_DEBUG "[smw] Mean time: %llu\n", task_to_thread_stats(tsk)[i].time);
+      }
     }
   }
 
