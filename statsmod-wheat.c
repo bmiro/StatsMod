@@ -1,14 +1,13 @@
 #include "statsmod-wheat.h"
 
 /** Backuped original syscall function array */
-//struct t_old_syscall syscall_old[NUM_INTERCEPTED_CALLS];
-int (*syscall_old[NUM_INTERCEPTED_CALLS])(void);
+struct t_old_syscall syscall_old[NUM_INTERCEPTED_CALLS];
 
 /** Itercepted syscall function array */
 int (*syscall_local[NUM_INTERCEPTED_CALLS])(void);
 
 /* Module status 0 for disabled, 1 for enabled */
-//char enabled;
+char enabled;
 
 /****************************************************************************/
 /********************** Needed anticipated definitions **********************/
@@ -39,7 +38,7 @@ static int __init statsmodwheat_init(void) {
 
   /* Intercepting sys_call. Don't be evil, unlike Google */
   intercept_sys_calls();
-  //enabled = 1;
+  enabled = 1;
   printk(KERN_DEBUG "[smw] \t Syscalls intercepted.\n");
 
   printk(KERN_DEBUG "[smw] Wheat planted, waiting until it grows...\n");
@@ -49,7 +48,7 @@ static int __init statsmodwheat_init(void) {
 static void __exit statsmodwheat_exit(void) {
   int i;
 
-  //char sc_name[SYSCALL_NAME_LEN];
+  char sc_name[SYSCALL_NAME_LEN];
   struct task_struct *tsk;
 
   printk(KERN_DEBUG "[smw] Bye!\n");
@@ -57,32 +56,32 @@ static void __exit statsmodwheat_exit(void) {
   tsk = find_task_by_pid(pid);
 
   for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
-//     switch (i) {
-//       case WRITE:
-//         strcpy(sc_name, "WRITE");
-//         break;
-//       case CLONE:
-//         strcpy(sc_name, "CLONE");
-//         break;
-//       case CLOSE:
-//         strcpy(sc_name, "CLOSE");
-//         break;
-//       case LSEEK:
-//         strcpy(sc_name, "LSEEK");
-//         break;
-//       case OPEN:
-//         strcpy(sc_name, "OPEN");
-//         break;
-//       default:
-//         strcpy(sc_name, "UNKWN");
-//     }
+    switch (i) {
+      case WRITE:
+        strcpy(sc_name, "WRITE");
+        break;
+      case CLONE:
+        strcpy(sc_name, "CLONE");
+        break;
+      case CLOSE:
+        strcpy(sc_name, "CLOSE");
+        break;
+      case LSEEK:
+        strcpy(sc_name, "LSEEK");
+        break;
+      case OPEN:
+        strcpy(sc_name, "OPEN");
+        break;
+      default:
+        strcpy(sc_name, "UNKWN");
+    }
 
     printk(KERN_DEBUG "[smw] Pid: %d %d\n", task_to_thread_pid(tsk), pid);
 
     if (tsk->pid != task_to_thread_pid(tsk)) {
-      //printk(KERN_DEBUG "[smw] The %s syscall isn't initialized\n", sc_name);
+      printk(KERN_DEBUG "[smw] The %s syscall isn't initialized\n", sc_name);
     } else {
-      //printk(KERN_DEBUG "[smw] %s syscall:\n", sc_name);
+      printk(KERN_DEBUG "[smw] %s syscall:\n", sc_name);
       printk(KERN_DEBUG "[smw] Total: %lu\n", task_to_thread_stats(tsk)[i].total);
       printk(KERN_DEBUG "[smw] Success: %lu\n", task_to_thread_stats(tsk)[i].success);
       printk(KERN_DEBUG "[smw] Fail: %lu\n", task_to_thread_stats(tsk)[i].fail);
@@ -91,7 +90,7 @@ static void __exit statsmodwheat_exit(void) {
   }
 
   restore_sys_calls();
-  //enabled = 0;
+  enabled = 0;
 }
 
 /****************************************************************************/
@@ -149,50 +148,32 @@ int stats_check_and_set(struct task_struct *tsk) {
 }
 
 void init_syscall_arrays(void) {
-//   syscall_old[OPEN].pos = __NR_open;
-//   syscall_old[LSEEK].pos = __NR_lseek;
-//   syscall_old[CLONE].pos = __NR_clone;
-//   syscall_old[CLOSE].pos = __NR_close;
-//   syscall_old[WRITE].pos = __NR_write;
+  syscall_old[OPEN].pos = __NR_open;
+  syscall_old[LSEEK].pos = __NR_lseek;
+  syscall_old[CLONE].pos = __NR_clone;
+  syscall_old[CLOSE].pos = __NR_close;
+  syscall_old[WRITE].pos = __NR_write;
 
-//   syscall_local[OPEN] = sys_open_local;
-//   syscall_local[LSEEK] = sys_lseek_local;
-//   syscall_local[CLONE] = sys_clone_local;
-//   syscall_local[CLOSE] = sys_close_local;
-//   syscall_local[WRITE] = sys_write_local;
+  syscall_local[OPEN] = sys_open_local;
+  syscall_local[LSEEK] = sys_lseek_local;
+  syscall_local[CLONE] = sys_clone_local;
+  syscall_local[CLOSE] = sys_close_local;
+  syscall_local[WRITE] = sys_write_local;
 }
 
 void intercept_sys_calls(void) {
-//   int i;
-//   for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
-//     syscall_old[i].call = sys_call_table[syscall_old[i].pos];
-//     sys_call_table[syscall_old[i].pos] = syscall_local[i];
-//   }
-  syscall_old[OPEN] = sys_call_table[__NR_open];
-  syscall_old[LSEEK] = sys_call_table[__NR_lseek];
-  syscall_old[CLONE] = sys_call_table[__NR_clone];
-  syscall_old[CLOSE] = sys_call_table[__NR_close];
-  syscall_old[WRITE] = sys_call_table[__NR_write];
-
-  sys_call_table[__NR_open] = sys_open_local;
-  sys_call_table[__NR_lseek] = sys_lseek_local;
-  sys_call_table[__NR_clone] = sys_clone_local;
-  sys_call_table[__NR_close] = sys_close_local;
-  sys_call_table[__NR_write] = sys_write_local;
-
+  int i;
+  for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
+    syscall_old[i].call = sys_call_table[syscall_old[i].pos];
+    sys_call_table[syscall_old[i].pos] = syscall_local[i];
+  }
 }
 
 void restore_sys_calls(void) {
-//   int i;
-//   for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
-//     sys_call_table[syscall_old[i].pos] = syscall_old[i].call;
-//   }
-  sys_call_table[__NR_open] = syscall_old[OPEN];
-  sys_call_table[__NR_lseek] = syscall_old[LSEEK];
-  sys_call_table[__NR_clone] = syscall_old[CLONE];
-  sys_call_table[__NR_close] = syscall_old[CLOSE];
-  sys_call_table[__NR_write] = syscall_old[WRITE];
-
+  int i;
+  for (i = 0; i < NUM_INTERCEPTED_CALLS; i++) {
+    sys_call_table[syscall_old[i].pos] = syscall_old[i].call;
+  }
 }
 
 /****************************************************************************/
@@ -296,6 +277,7 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
   error = lsk(fd, offset, origin);
   time = proso_get_cycles() - time;
 
+
   stats_check_and_set(current);
   save_current_stats(LSEEK, time, error);
 
@@ -332,25 +314,27 @@ int get_stats(struct my_thread_info *t_info, pid_t desitred_pid, int syscall) {
 
 int freeze_stats(void) {
   try_module_get(THIS_MODULE);
-//   if (!enabled) {
-//     module_put(THIS_MODULE);
-//     return -1;
-//   }
+
+  if (!enabled) {
+    module_put(THIS_MODULE);
+    return -1;
+  }
   restore_sys_calls();
-//   enabled = 0;
+  enabled = 0;
 
   module_put(THIS_MODULE);
   return 0;
 }
 
 int microwave_stats(void) {
+  if (enabled) {
+    return -1;
+  }
+
   try_module_get(THIS_MODULE);
-//   if (enabled) {
-//     module_put(THIS_MODULE);
-//     return -1;
-//   }
+
   intercept_sys_calls();
-//   enabled = 1;
+  enabled = 1;
 
   module_put(THIS_MODULE);
   return 0;
