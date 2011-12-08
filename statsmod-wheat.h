@@ -51,7 +51,7 @@ typedef struct {
 
 typedef struct {
   long pos;
-  int (*call)();
+  int (*call)(void);
 } t_old_syscall;
 
 /** Given a process pid and the function to monitor it returns the stats

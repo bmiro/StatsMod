@@ -4,7 +4,7 @@
 t_old_syscall syscall_old[NUM_INTERCEPTED_CALLS];
 
 /** Itercepted syscall function array */
-int (*syscall_local[NUM_INTERCEPTED_CALLS])();
+int (*syscall_local[NUM_INTERCEPTED_CALLS])(void);
 
 /* Module status 0 for disabled, 1 for enabled */
 char enabled;
@@ -108,11 +108,14 @@ void restore_sys_calls(void) {
 /************ Our custom syscalls to intercept the original ones ************/
 /****************************************************************************/
 long sys_open_local(const char __user * filename, int flags, int mode) {
+  long (*opn)(const char __user *, int, int);
 
   try_module_get(THIS_MODULE);
 
+  opn = syscall_old[OPEN].call;
+
   time = proso_get_cycles();
-  error = syscall_old[OPEN].call(filename, flags, mode);
+  error = opn(filename, flags, mode);
   time = proso_get_cycles() - time;
 
   stats_check_and_set(current);
@@ -123,11 +126,14 @@ long sys_open_local(const char __user * filename, int flags, int mode) {
 }
 
 long sys_close_local(unsigned int fd) {
+  long (*cls)(unsigned int);
 
   try_module_get(THIS_MODULE);
 
+  cls = syscall_old[CLOSE].call;
+
   time = proso_get_cycles();
-  error = syscall_old[CLOSE].call(fd);
+  error = cls(fd);
   time = proso_get_cycles() - time;
 
   stats_check_and_set(current);
@@ -138,11 +144,14 @@ long sys_close_local(unsigned int fd) {
 }
 
 ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count) {
+  ssize_t (*wrt)(unsigned int, const char __user *, size_t);
 
   try_module_get(THIS_MODULE);
 
+  wrt = syscall_old[WRITE].call;
+
   time = proso_get_cycles();
-  error = syscall_old[WRITE].call(fd, buf, count);
+  error = wrt(fd, buf, count);
   time = proso_get_cycles() - time;
 
   stats_check_and_set(current);
@@ -153,11 +162,14 @@ ssize_t sys_write_local(unsigned int fd, const char __user * buf, size_t count) 
 }
 
 int sys_clone_local(struct pt_regs regs) {
+  int (*cln) (struct pt_regs);
 
   try_module_get(THIS_MODULE);
 
+  cln = syscall_old[CLONE].call;
+
   time = proso_get_cycles();
-  error = syscall_old[CLONE].call(regs);
+  error = cln(regs);
   time = proso_get_cycles() - time;
 
   stats_check_and_set(current);
@@ -168,11 +180,14 @@ int sys_clone_local(struct pt_regs regs) {
 }
 
 off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
+  off_t (*lsk)(unsigned int, off_t, unsigned int);
 
   try_module_get(THIS_MODULE);
 
+  lsk = syscall_old[LSEEK].call;
+
   time = proso_get_cycles();
-  error = syscall_old[LSEEK].call(fd, offset, origin);
+  error = lsk(fd, offset, origin);
   time = proso_get_cycles() - time;
 
   stats_check_and_set(current);
