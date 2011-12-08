@@ -34,12 +34,6 @@ int main() {
     exit(1);
   }
 
-  //printf(fgetc(fpipe));
-//   fgets(buff, 10, fpipe);
-//   printf(buff);
-
-
-
   if (fgetc(fpipe) != EOF) {
     printf("\tUnable to load module, maybe already in use?\n");
     pclose(fpipe);
