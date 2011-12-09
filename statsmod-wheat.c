@@ -121,8 +121,8 @@ int get_stats(struct t_info *stats, pid_t desired_pid, int syscall) {
   struct task_struct *tsk;
   int thi_size;
   int error;
-
-  thi_size = sizeof(struct t_info);
+ 
+   thi_size = sizeof(struct t_info);
 
   if (!valid_intercepted_syscall(syscall)) return -EINVAL;
   if (!access_ok(VERIFY_WRITE, stats, thi_size)) return -EFAULT;
@@ -136,9 +136,10 @@ int get_stats(struct t_info *stats, pid_t desired_pid, int syscall) {
   stats_check_and_set(tsk);
 
   error = copy_to_user(stats, &(task_to_thread_stats(tsk)[syscall]), thi_size);
+  //strlcpy(&stats, &(task_to_thread_stats(tsk)[syscall]), thi_size);
 
   module_put(THIS_MODULE);
-  return error;
+  return thi_size;
 }
 
 /** Stops recording the statistics. 

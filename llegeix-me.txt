@@ -1,0 +1,3 @@
+Per executar el joc de proves es fa amb un make runjp.
+
+Aquest ja hauria de compilar els fitxers i executar-se.

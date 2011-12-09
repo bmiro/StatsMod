@@ -10,12 +10,7 @@
 #include <linux/fs.h>
 
 #include "statsmod-wheat.h"
-
-/* ioctl operations */
-#define CHANGE_PROCESS    0
-#define CHANGE_SYSCALL    1
-#define RESET_CUR_PROCESS 2
-#define RESET_ALL_PROCESS 3
+#include "statsmod-common.h"
 
 //TODO dynamic!
 #define MJR 169

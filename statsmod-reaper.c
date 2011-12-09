@@ -59,12 +59,14 @@ static void __exit statsmodreaper_exit(void) {
 /****************************************************************************/
 /**************************** Our file operations ***************************/
 /****************************************************************************/
-ssize_t smr_read (struct file *f, char __user *buffer, size_t size, loff_t *offet) {
+ssize_t smr_read(struct file *f, char __user *buffer, size_t size, loff_t *offet) {
   struct t_info stats;
   int error;
   int to_read;
 
   to_read = (size < sizeof(struct t_info)) ? size : sizeof(struct t_info);
+
+  printk(KERN_DEBUG "[smr] Trying to read!\n");
 
   /* Params check */
   if (size < 0) return -EINVAL; /* Check before the access_ok */
@@ -72,11 +74,20 @@ ssize_t smr_read (struct file *f, char __user *buffer, size_t size, loff_t *offe
 
   //TODO check *f, offset just ignore?
 
-  error = get_stats(&stats, pid, sysc);
-  if (error < 0) return error;
+  printk(KERN_DEBUG "[smr] size %d, to_read %d, pid %d, sysc %d\n", size, to_read, pid, sysc);
 
-  error = copy_to_user(buffer, &stats, error);
-  return to_read - error;
+  error = get_stats(buffer, pid, sysc);
+
+//   printk(KERN_DEBUG "[smr] error %d\n", error);
+// 
+//   if (error < 0) return error;
+// 
+//   error = copy_to_user(buffer, &stats, to_read);
+// 
+//   printk(KERN_DEBUG "[smr] \tCopied to user\n");
+// 
+//   //return to_read - error;
+  return error;
 }
 
 int smr_ioctl (struct inode *i, struct file *f, unsigned int arg1, unsigned long arg2) {
@@ -126,7 +137,7 @@ int smr_ioctl (struct inode *i, struct file *f, unsigned int arg1, unsigned long
   return 0;
 }
 
-int smr_open (struct inode *i, struct file *f) {
+int smr_open(struct inode *i, struct file *f) {
 
   if (current->uid != 0) return -EACCES;
   if (opened) return -EBUSY;
