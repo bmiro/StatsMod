@@ -14,6 +14,8 @@
 #define CHANGE_SYSCALL    1
 #define RESET_CUR_PROCESS 2
 #define RESET_ALL_PROCESS 3
+#define DISABLE_SYSCALL   4
+#define ENABLE_SYSCALL    5
 
 struct t_info {
   unsigned long total;

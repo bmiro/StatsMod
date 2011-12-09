@@ -1,6 +1,16 @@
 Primer de tot s'ha de fer un make mknod per crear el dispositiu a /dev.
 
-Per executar el joc de proves es fa amb un make runjp, aquest ja hauria
- de compilar els moduls ijp i executar-se.
+Per executar el joc de proves és fa amb un make runjp, aquest ja hauria
+de compilar els moduls, jp i executar-se.
+
+Pensar que s'ha de fer un make rmmod mentre el jp segueix en execució
+si es volen veure estadístiques per el dmesg.
+
+Pensar a fer un make rmmod sempre abans de tornar a executar el jp
+per si un cas els mòduls estiguessin carregats.
+
+Si es vol aprofitar la dependència de modules s'ha d'afegir el
+modules.dep al del sistema cat modules.dep >> ... però tal i
+com està configurat tot no es necessari.
 
 JJ06-team.

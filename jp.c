@@ -16,6 +16,8 @@
 #define SUCCESS 0
 #define FAIL 1
 
+#define NON_EXISTENT_FILE "dijkstraisalive"
+
 /* Must containt more than N_SUCCESS characters for write test */
 #define TEST_BUFFER "0123456789ABCDEF"
 
@@ -53,7 +55,7 @@ int main() {
     f[i] = open(file_name, O_RDWR | O_CREAT);
     if (f[i] < 0) {
       perror("Cannot open existing file.");
-      printf("\tSomething happen openning the file, %s exist?\n", EXISTENT_FILE);
+      printf("\tSomething happen openning the file, %s exist?\n", file_name);
     }
     close(f[i]);
   }
@@ -109,7 +111,7 @@ int main() {
     f[i] = open(file_name, O_RDWR);
     if (f[i] < 0) {
       perror("Cannot open existing file.");
-      printf("\tSomething happen openning the file, %s exist?\n", EXISTENT_FILE);
+      printf("\tSomething happen openning the file, %s exist?\n", file_name);
     } else {
       results[OPEN][SUCCESS]++;
     }
@@ -182,6 +184,8 @@ int main() {
     }
   }
 
+
+  /* Testing device in dev */
   smr = open("/dev/smr", O_RDWR);
   if (smr < 0) {
     printf("\t Failed opening smr device\n");
@@ -194,13 +198,20 @@ int main() {
     exit(1);
   }
 
-  printf("\tTesting read on device smr, reading default stats (OPEN): \n");
+  printf("\tTesting read on device smr, reading default stats (OPEN) [13 / 5+1 / 7]: \n");
   printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
-  printf("\tTesting ioctl on device smr, change to CLONE stats: \n");
-  printf("\tShould show %d success and 0 fail (2nd popen & fork in jp.c code). \n", 2);
-  ioctl(smr, CHANGE_SYSCALL, CLONE);
+  printf("\t\tPassed succesfully, press ENTER to continue");
+  getchar();
+  /**************************** Testing read smr ****************************/
+
+  printf("\tTesting ioctl on device smr, change to CLONE stats [ 1 / 1 / 0 ]: \n");
+  printf("\tShould show %d success and 0 fail (2nd popen in jp.c code). \n", 1);
+  foo = ioctl(smr, CHANGE_SYSCALL, CLONE);
+  if (foo < 0) {
+    printf("\tError in ioctl setting CLONE syscall.\n");
+  }
   foo = read(smr, &stats, sizeof(struct t_info));
   if (foo != sizeof(struct t_info)) {
     printf("\tSomething went wrong reading stats using smr device.\n");
@@ -209,13 +220,16 @@ int main() {
   printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
+  printf("\t\tPassed succesfully, press ENTER to continue\n");
+  getchar();
+  /*********************** Testing cur_process & reset ***********************/
   childpid = fork();
 
   if (childpid == 0) { /* Child */
     printf("\t[CHILD] I'm the child and I have stats copied from my father but he will reset them.\n");
     while(1);
   }
-  printf("\tTesting ioctl on device smr, changing to pid %d and resseting them.\n", childpid);
+  printf("\tTesting ioctl on device smr, changing to pid %d and resseting them. [0 / 0 / 0 / 0]\n", childpid);
   foo = ioctl(smr, CHANGE_PROCESS, &childpid);
   if (foo < 0) {
     printf("\tError in ioctl changing process to child.\n");
@@ -234,7 +248,10 @@ int main() {
   printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
-  printf("\tShowing again self stats.\n");
+  printf("\t\tPassed succesfully, press ENTER to continue\n");
+  getchar();
+  /************************** ioctl change process **************************/
+  printf("\tShowing again self stats (with another clone of the fork). [ 2 / 2 / 2 ]\n");
   ioctl(smr, CHANGE_PROCESS, &selfpid);
   foo = read(smr, &stats, sizeof(struct t_info));
   if (foo != sizeof(struct t_info)) {
@@ -244,7 +261,56 @@ int main() {
   printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
-  printf("\tIn dmesg all stats of this process (except CLONE) must have %d success and %d fails. \n", N_SUCCESS, N_FAIL);
+  printf("\t\tPassed succesfully, press ENTER to continue\n");
+  getchar();
+  /************************** ioctl disable/enable **************************/
+  printf("\tTesting desfuse of the module, of this %d OPEN only 2 will be acounted.\n", N_SUCCESS);
+
+  foo = ioctl(smr, CHANGE_SYSCALL, OPEN);
+  if (foo < 0) {
+    printf("\tError in ioctl setting OPEN syscall.\n");
+  }
+  printf("\tPrevious OPEN stats:\n");
+  foo = read(smr, &stats, sizeof(struct t_info));
+  if (foo != sizeof(struct t_info)) {
+    printf("\tSomething went wrong reading stats using smr device.\n");
+    exit(1);
+  }
+  printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
+         stats.total, stats.success, stats.fail, stats.time);
+
+  foo = ioctl(smr, DISABLE_SYSCALL, OPEN);
+  if (foo < 0) {
+    printf("\tError in ioctl stoping OPEN syscall.\n");
+  }
+  for (i = 0; i < N_SUCCESS; i++) {
+    if (i == (N_SUCCESS-2)) {
+      foo = ioctl(smr, ENABLE_SYSCALL, OPEN);
+      if (foo < 0) {
+        printf("\tError in ioctl starting OPEN syscall.\n");
+      }
+    }
+    sprintf(file_name, "file-%d", i);
+    f[i] = open(file_name, O_RDWR);
+    if (f[i] < 0) {
+      perror("Cannot open existing file.");
+      printf("\tSomething happen openning the file, %s exist?\n", file_name);
+    } else {
+      results[OPEN][SUCCESS]++;
+    }
+    close(f[i]);
+  }
+
+  printf("\tActual OPEN stats (+2 success):\n");
+  foo = read(smr, &stats, sizeof(struct t_info));
+  if (foo != sizeof(struct t_info)) {
+    printf("\tSomething went wrong reading stats using smr device.\n");
+    exit(1);
+  }
+  printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
+         stats.total, stats.success, stats.fail, stats.time);
+
+  printf("\tIn dmesg all stats of this process (except CLONE and OPEN) must have %d success and %d fails. \n", N_SUCCESS, N_FAIL);
 
   printf("\tOnce you have checked all the values type \"make rmmod\" in other shell and kill this process.\n");
 

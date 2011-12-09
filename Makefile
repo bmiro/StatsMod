@@ -12,7 +12,7 @@ root-clean:
 
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
-	rm *~ *.ko *.mod.c *.mod.o *.o jp-wheat file-*
+	rm *~ *.ko *.mod.c *.mod.o *.o jp file-*
 
 runjp: all jp
 	sudo ./jp

@@ -422,6 +422,8 @@ EXPORT_SYMBOL(get_stats);
 EXPORT_SYMBOL(freeze_stats);
 EXPORT_SYMBOL(microwave_stats);
 EXPORT_SYMBOL(reset_stats);
+EXPORT_SYMBOL(ignore_syscall);
+EXPORT_SYMBOL(lookat_syscall);
 EXPORT_SYMBOL(valid_intercepted_syscall);
 
 module_init(statsmodwheat_init);

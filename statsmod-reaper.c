@@ -72,21 +72,10 @@ ssize_t smr_read(struct file *f, char __user *buffer, size_t size, loff_t *offet
   if (size < 0) return -EINVAL; /* Check before the access_ok */
   if (!access_ok(VERIFY_WRITE, buffer, to_read)) return -EFAULT;
 
-  //TODO check *f, offset just ignore?
-
   printk(KERN_DEBUG "[smr] size %d, to_read %d, pid %d, sysc %d\n", size, to_read, pid, sysc);
 
   error = get_stats(buffer, pid, sysc);
 
-//   printk(KERN_DEBUG "[smr] error %d\n", error);
-// 
-//   if (error < 0) return error;
-// 
-//   error = copy_to_user(buffer, &stats, to_read);
-// 
-//   printk(KERN_DEBUG "[smr] \tCopied to user\n");
-// 
-//   //return to_read - error;
   return error;
 }
 
@@ -132,6 +121,11 @@ int smr_ioctl (struct inode *i, struct file *f, unsigned int arg1, unsigned long
         }
       }
       break;
+    case DISABLE_SYSCALL:
+      return ignore_syscall(sysc);
+
+    case ENABLE_SYSCALL:
+      return lookat_syscall(sysc);
 
     default:
       return -EBADRQC;
