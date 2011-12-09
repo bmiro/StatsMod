@@ -344,6 +344,14 @@ int microwave_stats(void) {
   return 0;
 }
 
+int ignore_syscall(int syscall) {
+  return 0;
+}
+
+int lookat_syscall(int syscall); {
+  return 0;
+}
+
 int reset_stats(pid_t desitred_pid, int syscall) {
   struct task_struct *tsk;
 

@@ -9,10 +9,10 @@
 #include <asm/uaccess.h>
 
 #define OPEN  0
-#define LSEEK 1
-#define CLONE 2
+#define WRITE 1
+#define LSEEK 2
 #define CLOSE 3
-#define WRITE 4
+#define CLONE 4
 
 #define NUM_INTERCEPTED_CALLS 5
 
@@ -81,6 +81,21 @@ int freeze_stats(void);
  *        -1 if error (already started)
  */
 int microwave_stats(void);
+
+/** Stops recording the statistics of the given syscall. 
+ * @return:
+ *        0 if success
+ *        -1 if error (already stoped)
+ */
+int ignore_syscall(int syscall);
+
+/** Continues recording the statistics of the given syscall. 
+ * @return:
+ *        0 if success
+ *        -1 if error (already started)
+ */
+int lookat_syscall(int syscall);
+
 
 /** Resets the stats of the given pid.
  * @return:
