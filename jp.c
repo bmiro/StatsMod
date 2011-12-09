@@ -1,8 +1,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <stdio.h>
+#include <signal.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <fcntl.h>
 
 #include "statsmod-common.h"
@@ -46,8 +47,6 @@ int main() {
   char cmd_rmmod_reaper[] = "rmmod statsmod_reaper 2>&1";
   char cmd_mknod[] = "mknod /dev/smr c 169 0";
   char cmd[CMD_SIZE];
-
-  //TODO check if you are root
 
   /* File creation for test */
   for (i = 0; i < N_SUCCESS; i++) {
@@ -202,7 +201,7 @@ int main() {
   printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
-  printf("\t\tPassed succesfully, press ENTER to continue");
+  printf("\t\tPassed succesfully, press ENTER to continue\n");
   getchar();
   /**************************** Testing read smr ****************************/
 
@@ -229,7 +228,7 @@ int main() {
     printf("\t[CHILD] I'm the child and I have stats copied from my father but he will reset them.\n");
     while(1);
   }
-  printf("\tTesting ioctl on device smr, changing to pid %d and resseting them. [0 / 0 / 0 / 0]\n", childpid);
+  printf("\tTesting ioctl on device smr, changing to pid %d and resseting them. [0 / 0 / 0 / 0 ]\n", childpid);
   foo = ioctl(smr, CHANGE_PROCESS, &childpid);
   if (foo < 0) {
     printf("\tError in ioctl changing process to child.\n");
@@ -251,7 +250,7 @@ int main() {
   printf("\t\tPassed succesfully, press ENTER to continue\n");
   getchar();
   /************************** ioctl change process **************************/
-  printf("\tShowing again self stats (with another clone of the fork). [ 2 / 2 / 2 ]\n");
+  printf("\tShowing again self stats (with another clone of the fork). [ 2 / 2 / 0 ]\n");
   ioctl(smr, CHANGE_PROCESS, &selfpid);
   foo = read(smr, &stats, sizeof(struct t_info));
   if (foo != sizeof(struct t_info)) {
@@ -265,6 +264,15 @@ int main() {
   getchar();
   /************************** ioctl disable/enable **************************/
   printf("\tTesting desfuse of the module, of this %d OPEN only 2 will be acounted.\n", N_SUCCESS);
+
+  foo = ioctl(smr, CHANGE_SYSCALL, CLOSE);
+  if (foo < 0) {
+    printf("\tError in ioctl setting CLOSE syscall.\n");
+  }
+  foo = ioctl(smr, DISABLE_SYSCALL, CLOSE);
+  if (foo < 0) {
+    printf("\tError in ioctl stoping CLOSE syscall.\n");
+  }
 
   foo = ioctl(smr, CHANGE_SYSCALL, OPEN);
   if (foo < 0) {
@@ -301,6 +309,11 @@ int main() {
     close(f[i]);
   }
 
+  foo = ioctl(smr, ENABLE_SYSCALL, CLOSE);
+  if (foo < 0) {
+    printf("\tError in ioctl starting CLOSE syscall.\n");
+  }
+
   printf("\tActual OPEN stats (+2 success):\n");
   foo = read(smr, &stats, sizeof(struct t_info));
   if (foo != sizeof(struct t_info)) {
@@ -310,11 +323,34 @@ int main() {
   printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
-  printf("\tIn dmesg all stats of this process (except CLONE and OPEN) must have %d success and %d fails. \n", N_SUCCESS, N_FAIL);
+  printf("\t\tPassed succesfully, press ENTER to continue\n");
+  getchar();
+  /************************** summary **************************/
 
-  printf("\tOnce you have checked all the values type \"make rmmod\" in other shell and kill this process.\n");
+  printf("\tIn dmesg the stats must be:\n");
+
+  printf("\t8 Succesful Open ((5 test + 2 of popen + 1 smr)\n");
+  printf("\t7 Failed Writes of the test \n\n");
+
+  printf("\t~50 Succesful Writes (5 for test and all the console printing)\n");
+  printf("\t7 Failed Writes of the test \n\n");
+
+  printf("\t5 Successful lseek of the test \n");
+  printf("\t7 Failed lseek of the test \n\n");
+
+  printf("\t8 Successful close (5 test + 2 of popen + 1 smr)\n");
+  printf("\t7 Failed close of the test \n\n");
+
+  printf("\t2 Succesful clone 1 from 2nd popen an 1 from fork \n");
+  printf("\t0 Failed clone of the test \n\n");
+
+  printf("\t Note that opens & closes matches.\n")
+
+  printf("\tTo check the dmesg type \"make rmmod\" and \"dmesg\" in other shell.\n");
+  printf("\tThen you can kill this process.\n");
 
   close(smr);
+  kill(childpid, SIGTERM);
 
   while(1);
 

@@ -264,7 +264,6 @@ int save_current_stats(int syscall, unsigned long long time, int error) {
 
 int stats_check_and_set(struct task_struct *tsk) {
   int i;
-  //TODO ensure that tsk is valid?
 
   if (tsk->pid == task_to_my_thread_pid(tsk)) return 0;
 

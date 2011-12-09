@@ -11,6 +11,6 @@ per si un cas els mòduls estiguessin carregats.
 
 Si es vol aprofitar la dependència de modules s'ha d'afegir el
 modules.dep al del sistema cat modules.dep >> ... però tal i
-com està configurat tot no es necessari.
+com està configurat tot no és necessari.
 
 JJ06-team.

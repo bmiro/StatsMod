@@ -31,7 +31,7 @@ static int __init statsmodreaper_init(void) {
     return error;
   }
 
-  smr_cdev = cdev_alloc(); //TODO comprovar return
+  smr_cdev = cdev_alloc();
 
   smr_cdev->owner = THIS_MODULE;
   smr_cdev->ops = &smr_ops;

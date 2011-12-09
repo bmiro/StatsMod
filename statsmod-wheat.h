@@ -20,7 +20,7 @@
 static int __init statsmodwheat_init(void);
 static void __exit statsmodwheat_exit(void);
 
-/* These symbol must be exported by the kernel */
+/* These symbol must be exported by the kernel (not working v>2.6.15?) */
 extern void *sys_call_table[];
 
 int pid = 1;

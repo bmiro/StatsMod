@@ -12,7 +12,6 @@
 #include "statsmod-wheat.h"
 #include "statsmod-common.h"
 
-//TODO dynamic!
 #define MJR 169
 #define MNR 0
 
