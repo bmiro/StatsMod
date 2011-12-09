@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <signal.h>
@@ -6,16 +7,13 @@
 #include <stdio.h>
 #include <fcntl.h>
 
+
 #include "statsmod-common.h"
 
-#define BUFF_SIZE 256
 #define CMD_SIZE 100
 
 #define N_SUCCESS 5
 #define N_FAIL 7
-
-#define SUCCESS 0
-#define FAIL 1
 
 #define NON_EXISTENT_FILE "dijkstraisalive"
 
@@ -30,23 +28,27 @@ int main() {
   int i;
   int foo;
 
-  FILE *fpipe, *fp;
+  FILE *fpipe;
   int f[5];
   int smr;
 
   struct t_info stats;
 
-  char buff[BUFF_SIZE];
   char file_name[80];
 
-  int results[NUM_INTERCEPTED_CALLS][2];
-
   char cmd_insmod_wheat[] = "insmod statsmod-wheat.ko pid=%d 2>&1";
-  char cmd_rmmod_wheat[] = "rmmod statsmod_wheat 2>&1";
   char cmd_insmod_reaper[] = "insmod statsmod-reaper.ko";
-  char cmd_rmmod_reaper[] = "rmmod statsmod_reaper 2>&1";
-  char cmd_mknod[] = "mknod /dev/smr c 169 0";
+
+  /* char cmd_rmmod_wheat[] = "rmmod statsmod_wheat 2>&1";
+   * char cmd_rmmod_reaper[] = "rmmod statsmod_reaper 2>&1";
+   * char cmd_mknod[] = "mknod /dev/smr c 169 0"; */
+
   char cmd[CMD_SIZE];
+
+  if(getuid() != 0) {
+    printf("I need cow powa!\n");
+    exit(1);
+  }
 
   /* File creation for test */
   for (i = 0; i < N_SUCCESS; i++) {
@@ -111,8 +113,6 @@ int main() {
     if (f[i] < 0) {
       perror("Cannot open existing file.");
       printf("\tSomething happen openning the file, %s exist?\n", file_name);
-    } else {
-      results[OPEN][SUCCESS]++;
     }
   }
 
@@ -121,8 +121,6 @@ int main() {
     foo = open(NON_EXISTENT_FILE, O_RDWR);
     if (foo != -1) {
       printf("\tOpenning an (suposed) inexistent file! %s exist!!\n", NON_EXISTENT_FILE);
-    } else {
-      results[OPEN][FAIL]++;
     }
   }
 
@@ -131,8 +129,6 @@ int main() {
     if (write(f[i], TEST_BUFFER, i) < 0) {
       perror("Cannot write the existing file");
       printf("\tSomething happen writting the %d bytes to file %d\n", i, i);
-    } else {
-      results[WRITE][SUCCESS]++;
     }
   }
 
@@ -140,8 +136,6 @@ int main() {
   for (i = 0; i < N_FAIL; i++) {
     if (write(INVALID_FD, TEST_BUFFER, i) > -1) {
       printf("\tWritten on inexistent file!\n");
-    } else {
-      results[WRITE][FAIL]++;
     }
   }
 
@@ -150,8 +144,6 @@ int main() {
     if (lseek(f[i], i, SEEK_SET) < 0) {
       perror("Cannot seek the existing file");
       printf("\tSomething happen seeking at %d bytes in file %d\n", i, i);
-    } else {
-      results[LSEEK][SUCCESS]++;
     }
   }
 
@@ -159,8 +151,6 @@ int main() {
   for (i = 0; i < N_FAIL; i++) {
     if (lseek(INVALID_FD, -1, SEEK_SET) > -1) {
       printf("\tSeeked on inexistent file with bad offset!\n");
-    } else {
-      results[LSEEK][FAIL]++;
     }
   }
 
@@ -169,8 +159,6 @@ int main() {
     if (close(f[i]) < 0) {
       perror("Cannot close existing file");
       printf("\tSomething happen closing the file %d\n", i);
-    } else {
-      results[CLOSE][SUCCESS]++;
     }
   }
 
@@ -178,8 +166,6 @@ int main() {
   for (i = 0; i < N_FAIL; i++) {
     if (close(INVALID_FD) > -1) {
       printf("Closed an (suposed) unopened file!!!\n");
-    } else {
-      results[CLOSE][FAIL]++;
     }
   }
 
@@ -198,7 +184,7 @@ int main() {
   }
 
   printf("\tTesting read on device smr, reading default stats (OPEN) [13 / 5+1 / 7]: \n");
-  printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
+  printf("\tTotal: %lu\n \tSuccess: %lu\n \tFail: %lu\n \tTime: %llu\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
   printf("\t\tPassed succesfully, press ENTER to continue\n");
@@ -216,7 +202,7 @@ int main() {
     printf("\tSomething went wrong reading stats using smr device.\n");
     exit(1);
   }
-  printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
+  printf("\tTotal: %lu\n \tSuccess: %lu\n \tFail: %lu\n \tTime: %llu\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
   printf("\t\tPassed succesfully, press ENTER to continue\n");
@@ -244,7 +230,7 @@ int main() {
     printf("\tSomething went wrong reading stats using smr device.\n");
     exit(1);
   }
-  printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
+  printf("\tTotal: %lu\n \tSuccess: %lu\n \tFail: %lu\n \tTime: %llu\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
   printf("\t\tPassed succesfully, press ENTER to continue\n");
@@ -257,7 +243,7 @@ int main() {
     printf("\tSomething went wrong reading stats using smr device.\n");
     exit(1);
   }
-  printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
+  printf("\tTotal: %lu\n \tSuccess: %lu\n \tFail: %lu\n \tTime: %llu\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
   printf("\t\tPassed succesfully, press ENTER to continue\n");
@@ -284,7 +270,7 @@ int main() {
     printf("\tSomething went wrong reading stats using smr device.\n");
     exit(1);
   }
-  printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
+  printf("\tTotal: %lu\n \tSuccess: %lu\n \tFail: %lu\n \tTime: %llu\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
   foo = ioctl(smr, DISABLE_SYSCALL, OPEN);
@@ -303,8 +289,6 @@ int main() {
     if (f[i] < 0) {
       perror("Cannot open existing file.");
       printf("\tSomething happen openning the file, %s exist?\n", file_name);
-    } else {
-      results[OPEN][SUCCESS]++;
     }
     close(f[i]);
   }
@@ -320,7 +304,7 @@ int main() {
     printf("\tSomething went wrong reading stats using smr device.\n");
     exit(1);
   }
-  printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
+  printf("\tTotal: %lu\n \tSuccess: %lu\n \tFail: %lu\n \tTime: %llu\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
   printf("\t\tPassed succesfully, press ENTER to continue\n");
@@ -344,7 +328,7 @@ int main() {
   printf("\t2 Succesful clone 1 from 2nd popen an 1 from fork \n");
   printf("\t0 Failed clone of the test \n\n");
 
-  printf("\t Note that opens & closes matches.\n")
+  printf("\t Note that opens & closes matches.\n");
 
   printf("\tTo check the dmesg type \"make rmmod\" and \"dmesg\" in other shell.\n");
   printf("\tThen you can kill this process.\n");
