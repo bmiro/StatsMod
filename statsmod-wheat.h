@@ -39,7 +39,7 @@ MODULE_AUTHOR("Alberto Esteban <alberto84.eo@gmail.com>, Bartomeu Miró <bartome
 MODULE_DESCRIPTION("ProSO stats grower");
 
 
-struct groove {
+struct t_info {
   unsigned long total;
   unsigned long success;
   unsigned long fail;
@@ -48,7 +48,7 @@ struct groove {
 
 struct my_thread_info {
   struct thread_info thread_info_old;
-  struct groove land_where_wheat_grows[NUM_INTERCEPTED_CALLS];
+  struct t_info land_where_wheat_grows[NUM_INTERCEPTED_CALLS];
   int pid;
 };
 
@@ -66,7 +66,14 @@ struct t_old_syscall{
  *         -EFAULT if the buffer is not correct 
  *	   Positive number means that there are remaining bytes to copy
  */
-int get_stats(struct my_thread_info *t_info, pid_t pid, int syscall);
+int get_stats(struct t_info *stats, pid_t desired_pid, int syscall);
+
+/** Check if the syscall is valid or not.
+ * @return :
+ *         0 if invalid (fail)
+ *         1 if valid (success)
+ */
+int valid_intercepted_syscall(int syscall);
 
 /** Stops recording the statistics. 
  * @return:
@@ -108,5 +115,7 @@ int reset_stats(pid_t pid, int syscall);
 // EXPORT_SYMBOL(freeze_stats);
 // EXPORT_SYMBOL(microwave_stats);
 // EXPORT_SYMBOL(reset_stats);
+// EXPORT_SYMBOL(reset_stats);
+
 
 #endif

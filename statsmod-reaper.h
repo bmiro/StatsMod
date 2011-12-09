@@ -5,6 +5,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
+#include <linux/cdev.h>
 #include <linux/init.h>
 #include <linux/fs.h>
 
@@ -17,8 +18,8 @@
 #define RESET_ALL_PROCESS 3
 
 //TODO dynamic!
-#define MAJOR 169
-#define MINOR 0
+#define MJR 169
+#define MNR 0
 
 static int __init statsmodreaper_init(void);
 static void __exit statsmodreaper_exit(void);
@@ -28,10 +29,6 @@ static void __exit statsmodreaper_exit(void);
 // extern int reset_stats(pid_t pid, int syscall);
 // extern int ignore_syscall(int syscall);
 // extern int lookat_syscall(int syscall);
-
-int pid = 1;
-module_param(pid, int, 0);
-MODULE_PARM_DESC(pid,"Procces wich stats will be monitorized by default");
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alberto Esteban <alberto84.eo@gmail.com>, Bartomeu Miró <bartomeumiro@gmail.com> {[JJ06]}");
@@ -45,7 +42,7 @@ int smr_ioctl (struct inode *i, struct file *f, unsigned int arg1, unsigned long
 int smr_open (struct inode *i, struct file *f);
 int smr_release (struct inode *i, struct file *f);
 
-struct file_operations mymod_fops = {
+struct file_operations smr_ops = {
   owner: THIS_MODULE,
   read: smr_read,
   ioctl: smr_ioctl,

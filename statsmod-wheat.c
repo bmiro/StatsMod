@@ -17,7 +17,6 @@ void init_syscall_arrays(void);
 void intercept_sys_calls(void);
 void restore_sys_calls(void);
 static inline unsigned long long proso_get_cycles(void);
-int valid_intercepted_syscall(int syscall);
 int save_current_stats(int syscall, unsigned long long time, int error);
 int stats_check_and_set(struct task_struct *tsk);
 /************ Our custom syscalls to intercept the original ones ************/
@@ -108,18 +107,12 @@ static inline unsigned long long proso_get_cycles(void) {
   return ((unsigned long long) edx <<32) + eax;
 }
 
-/** Check if the specified syscall is intercepted or not accorting
- *  @return 1 if valid 0 if not */
-int valid_syscall(int syscall) {
-  return (-1 < syscall) && (syscall < NUM_INTERCEPTED_CALLS);
-}
-
 /** Saves stats of the current syscall of the current thread.
  * @time: time consumed defined as global variable in order to use less stack
  * @error: result of the syscall defined as global variable in order to use less stack
  */
 int save_current_stats(int syscall, unsigned long long time, int error) {
-  if (!valid_syscall(syscall)) return -1;
+  if (!valid_intercepted_syscall(syscall)) return -1;
 
   current_thread_stats[syscall].total++;
 
@@ -292,17 +285,17 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
 /****************************************************************************/
 /***************************** Public interface *****************************/
 /****************************************************************************/
-int get_stats(struct my_thread_info *t_info, pid_t desitred_pid, int syscall) {
+int get_stats(struct t_info *stats, pid_t desired_pid, int syscall) {
   struct task_struct *tsk;
   int thi_size;
   int error;
 
-  thi_size = sizeof(struct my_thread_info);
+  thi_size = sizeof(struct t_info);
 
-  if (!valid_syscall(syscall))return -EINVAL;
-  if (!access_ok(VERIFY_WRITE, t_info, thi_size)) return -EFAULT;
+  if (!valid_intercepted_syscall(syscall)) return -EINVAL;
+  if (!access_ok(VERIFY_WRITE, stats, thi_size)) return -EFAULT;
 
-  tsk = find_task_by_pid(desitred_pid);
+  tsk = find_task_by_pid(desired_pid);
   if (tsk == NULL) return -ESRCH;
 
   try_module_get(THIS_MODULE);
@@ -310,10 +303,16 @@ int get_stats(struct my_thread_info *t_info, pid_t desitred_pid, int syscall) {
   /* If not inizcialized will the copy_to_user will copy 0 not rubish */
   stats_check_and_set(tsk);
 
-  error = copy_to_user(t_info, &(task_to_thread_stats(tsk)[syscall]), thi_size);
+  error = copy_to_user(stats, &(task_to_thread_stats(tsk)[syscall]), thi_size);
 
   module_put(THIS_MODULE);
   return error;
+}
+
+/** Check if the specified syscall is intercepted or not accorting
+ *  @return 1 if valid 0 if not */
+int valid_intercepted_syscall(int syscall) {
+  return (-1 < syscall) && (syscall < NUM_INTERCEPTED_CALLS);
 }
 
 int freeze_stats(void) {
@@ -345,17 +344,26 @@ int microwave_stats(void) {
 }
 
 int ignore_syscall(int syscall) {
+  if (!valid_intercepted_syscall(syscall)) return -EINVAL;
+
+  sys_call_table[syscall_old[syscall].pos] = syscall_old[syscall].call;
   return 0;
 }
 
-int lookat_syscall(int syscall); {
+int lookat_syscall(int syscall) {
+  if (!valid_intercepted_syscall(syscall)) return -EINVAL;
+
+  if (sys_call_table[syscall_old[syscall].pos] != syscall_local[syscall]) {
+    syscall_old[syscall].call = sys_call_table[syscall_old[syscall].pos];
+    sys_call_table[syscall_old[syscall].pos] = syscall_local[syscall];
+  }
   return 0;
-}
+} 
 
 int reset_stats(pid_t desitred_pid, int syscall) {
   struct task_struct *tsk;
 
-  if (!valid_syscall(syscall)) return -EINVAL;
+  if (!valid_intercepted_syscall(syscall)) return -EINVAL;
 
   tsk = find_task_by_pid(desitred_pid);
   if (tsk == NULL) return -ESRCH;
