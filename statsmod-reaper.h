@@ -25,10 +25,11 @@ static int __init statsmodreaper_init(void);
 static void __exit statsmodreaper_exit(void);
 
 /* Functions exported from wheat module (the #include is only for syscall defines) */
-// extern int get_stats(struct my_thread_info *t_info, pid_t pid, int syscall);
-// extern int reset_stats(pid_t pid, int syscall);
-// extern int ignore_syscall(int syscall);
-// extern int lookat_syscall(int syscall);
+extern int valid_intercepted_syscall(int syscall);
+extern int get_stats(struct t_info *stats, pid_t desired_pid, int syscall);
+extern int reset_stats(pid_t pid, int syscall);
+extern int ignore_syscall(int syscall);
+extern int lookat_syscall(int syscall);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alberto Esteban <alberto84.eo@gmail.com>, Bartomeu Miró <bartomeumiro@gmail.com> {[JJ06]}");

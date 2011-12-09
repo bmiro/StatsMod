@@ -97,6 +97,141 @@ static void __exit statsmodwheat_exit(void) {
 }
 
 /****************************************************************************/
+/***************************** Public interface *****************************/
+/****************************************************************************/
+/** Check if the syscall is valid or not.
+ * @return :
+ *         0 if invalid (fail)
+ *         1 if valid (success)
+ */
+int valid_intercepted_syscall(int syscall) {
+  return (-1 < syscall) && (syscall < NUM_INTERCEPTED_CALLS);
+}
+
+/** Given a process pid and the function to monitor it returns the stats
+ * in the given pointer.
+ * @return:
+ *         0 if success
+ *         -ESRCH if pid doesn't exist
+ *         -EINVAL if syscall is invalid
+ *         -EFAULT if the buffer is not correct 
+ *	   Positive number means that there are remaining bytes to copy
+ */
+int get_stats(struct t_info *stats, pid_t desired_pid, int syscall) {
+  struct task_struct *tsk;
+  int thi_size;
+  int error;
+
+  thi_size = sizeof(struct t_info);
+
+  if (!valid_intercepted_syscall(syscall)) return -EINVAL;
+  if (!access_ok(VERIFY_WRITE, stats, thi_size)) return -EFAULT;
+
+  tsk = find_task_by_pid(desired_pid);
+  if (tsk == NULL) return -ESRCH;
+
+  try_module_get(THIS_MODULE);
+
+  /* If not inizcialized will the copy_to_user will copy 0 not rubish */
+  stats_check_and_set(tsk);
+
+  error = copy_to_user(stats, &(task_to_thread_stats(tsk)[syscall]), thi_size);
+
+  module_put(THIS_MODULE);
+  return error;
+}
+
+/** Stops recording the statistics. 
+ * @return:
+ *        0 if success
+ *        -1 if error (already stoped)
+ */
+int freeze_stats(void) {
+  try_module_get(THIS_MODULE);
+
+  if (!enabled) {
+    module_put(THIS_MODULE);
+    return -1;
+  }
+  restore_sys_calls();
+  enabled = 0;
+
+  module_put(THIS_MODULE);
+  return 0;
+}
+
+/** Continues recording the statistics. 
+ * @return:
+ *        0 if success
+ *        -1 if error (already started)
+ */
+int microwave_stats(void) {
+  if (enabled) {
+    return -1;
+  }
+
+  try_module_get(THIS_MODULE);
+
+  intercept_sys_calls();
+  enabled = 1;
+
+  module_put(THIS_MODULE);
+  return 0;
+}
+
+/** Stops recording the statistics of the given syscall. 
+ * @return:
+ *        0 if success
+ *        -1 if error (already stoped)
+ */
+int ignore_syscall(int syscall) {
+  if (!valid_intercepted_syscall(syscall)) return -EINVAL;
+
+  sys_call_table[syscall_old[syscall].pos] = syscall_old[syscall].call;
+  return 0;
+}
+
+/** Continues recording the statistics of the given syscall. 
+ * @return:
+ *        0 if success
+ *        -1 if error (already started)
+ */
+int lookat_syscall(int syscall) {
+  if (!valid_intercepted_syscall(syscall)) return -EINVAL;
+
+  if (sys_call_table[syscall_old[syscall].pos] != syscall_local[syscall]) {
+    syscall_old[syscall].call = sys_call_table[syscall_old[syscall].pos];
+    sys_call_table[syscall_old[syscall].pos] = syscall_local[syscall];
+  }
+  return 0;
+} 
+
+/** Resets the stats of the given pid.
+ * @return:
+ *        0 if success
+ *        -ESRCH if pid doesn't exist
+ */
+int reset_stats(pid_t desitred_pid, int syscall) {
+  struct task_struct *tsk;
+
+  if (!valid_intercepted_syscall(syscall)) return -EINVAL;
+
+  tsk = find_task_by_pid(desitred_pid);
+  if (tsk == NULL) return -ESRCH;
+
+  try_module_get(THIS_MODULE);
+
+  task_to_thread_stats(tsk)[syscall].total = 0;
+  task_to_thread_stats(tsk)[syscall].fail = 0;
+  task_to_thread_stats(tsk)[syscall].success = 0;
+  task_to_thread_stats(tsk)[syscall].time = 0;
+
+  module_put(THIS_MODULE);
+  return 0;
+}
+
+
+/****************************************************************************/
 /**************************** Auxiliar functions ****************************/
 /****************************************************************************/
 /** @return: long long with precise epoc from hardware */
@@ -282,102 +417,11 @@ off_t sys_lseek_local(unsigned int fd, off_t offset, unsigned int origin) {
   return error;
 }
 
-/****************************************************************************/
-/***************************** Public interface *****************************/
-/****************************************************************************/
-int get_stats(struct t_info *stats, pid_t desired_pid, int syscall) {
-  struct task_struct *tsk;
-  int thi_size;
-  int error;
-
-  thi_size = sizeof(struct t_info);
-
-  if (!valid_intercepted_syscall(syscall)) return -EINVAL;
-  if (!access_ok(VERIFY_WRITE, stats, thi_size)) return -EFAULT;
-
-  tsk = find_task_by_pid(desired_pid);
-  if (tsk == NULL) return -ESRCH;
-
-  try_module_get(THIS_MODULE);
-
-  /* If not inizcialized will the copy_to_user will copy 0 not rubish */
-  stats_check_and_set(tsk);
-
-  error = copy_to_user(stats, &(task_to_thread_stats(tsk)[syscall]), thi_size);
-
-  module_put(THIS_MODULE);
-  return error;
-}
-
-/** Check if the specified syscall is intercepted or not accorting
- *  @return 1 if valid 0 if not */
-int valid_intercepted_syscall(int syscall) {
-  return (-1 < syscall) && (syscall < NUM_INTERCEPTED_CALLS);
-}
-
-int freeze_stats(void) {
-  try_module_get(THIS_MODULE);
-
-  if (!enabled) {
-    module_put(THIS_MODULE);
-    return -1;
-  }
-  restore_sys_calls();
-  enabled = 0;
-
-  module_put(THIS_MODULE);
-  return 0;
-}
-
-int microwave_stats(void) {
-  if (enabled) {
-    return -1;
-  }
-
-  try_module_get(THIS_MODULE);
-
-  intercept_sys_calls();
-  enabled = 1;
-
-  module_put(THIS_MODULE);
-  return 0;
-}
-
-int ignore_syscall(int syscall) {
-  if (!valid_intercepted_syscall(syscall)) return -EINVAL;
-
-  sys_call_table[syscall_old[syscall].pos] = syscall_old[syscall].call;
-  return 0;
-}
-
-int lookat_syscall(int syscall) {
-  if (!valid_intercepted_syscall(syscall)) return -EINVAL;
-
-  if (sys_call_table[syscall_old[syscall].pos] != syscall_local[syscall]) {
-    syscall_old[syscall].call = sys_call_table[syscall_old[syscall].pos];
-    sys_call_table[syscall_old[syscall].pos] = syscall_local[syscall];
-  }
-  return 0;
-} 
-
-int reset_stats(pid_t desitred_pid, int syscall) {
-  struct task_struct *tsk;
-
-  if (!valid_intercepted_syscall(syscall)) return -EINVAL;
-
-  tsk = find_task_by_pid(desitred_pid);
-  if (tsk == NULL) return -ESRCH;
-
-  try_module_get(THIS_MODULE);
-
-  task_to_thread_stats(tsk)[syscall].total = 0;
-  task_to_thread_stats(tsk)[syscall].fail = 0;
-  task_to_thread_stats(tsk)[syscall].success = 0;
-  task_to_thread_stats(tsk)[syscall].time = 0;
-
-  module_put(THIS_MODULE);
-  return 0;
-}
+EXPORT_SYMBOL(get_stats);
+EXPORT_SYMBOL(freeze_stats);
+EXPORT_SYMBOL(microwave_stats);
+EXPORT_SYMBOL(reset_stats);
+EXPORT_SYMBOL(valid_intercepted_syscall);
 
 module_init(statsmodwheat_init);
 module_exit(statsmodwheat_exit);
