@@ -136,7 +136,6 @@ int get_stats(struct t_info *stats, pid_t desired_pid, int syscall) {
   stats_check_and_set(tsk);
 
   error = copy_to_user(stats, &(task_to_thread_stats(tsk)[syscall]), thi_size);
-  //strlcpy(&stats, &(task_to_thread_stats(tsk)[syscall]), thi_size);
 
   module_put(THIS_MODULE);
   return thi_size;

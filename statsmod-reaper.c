@@ -60,21 +60,16 @@ static void __exit statsmodreaper_exit(void) {
 /**************************** Our file operations ***************************/
 /****************************************************************************/
 ssize_t smr_read(struct file *f, char __user *buffer, size_t size, loff_t *offet) {
-  struct t_info stats;
   int error;
   int to_read;
 
   to_read = (size < sizeof(struct t_info)) ? size : sizeof(struct t_info);
 
-  printk(KERN_DEBUG "[smr] Trying to read!\n");
-
   /* Params check */
   if (size < 0) return -EINVAL; /* Check before the access_ok */
   if (!access_ok(VERIFY_WRITE, buffer, to_read)) return -EFAULT;
 
-  printk(KERN_DEBUG "[smr] size %d, to_read %d, pid %d, sysc %d\n", size, to_read, pid, sysc);
-
-  error = get_stats(buffer, pid, sysc);
+  error = get_stats((struct t_info*)buffer, pid, sysc);
 
   return error;
 }
@@ -93,8 +88,7 @@ int smr_ioctl (struct inode *i, struct file *f, unsigned int arg1, unsigned long
         error = copy_from_user(&p, (void *)arg2, sizeof(unsigned long));
         if (error < 0) return error;
 
-        error = (long)find_task_by_pid(p);
-        if ((int)error == NULL) return -ESRCH;
+        if (find_task_by_pid(p) == NULL) return -ESRCH;
 
         pid = p;
       }
@@ -108,7 +102,6 @@ int smr_ioctl (struct inode *i, struct file *f, unsigned int arg1, unsigned long
     case RESET_CUR_PROCESS:
       for (c = 0; c < NUM_INTERCEPTED_CALLS; c++) {
         error = reset_stats(pid, c);
-        printk(KERN_DEBUG "pid: %d!", pid);
         if (error < 0) return error;
       }
       break;
