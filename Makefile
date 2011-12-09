@@ -5,14 +5,17 @@ all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
 jp:
-	gcc jp-wheat.c -o jp-wheat
+	gcc jp.c -o jp
+
+root-clean:
+	sudo make clean
 
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
-	rm *~ *.ko *.mod.c *.mod.o *.o jp-wheat file-* .*
+	rm *~ *.ko *.mod.c *.mod.o *.o jp-wheat file-*
 
 runjp: all jp
-	sudo ./jp-wheat
+	sudo ./jp
 
 insmod: all
 	sudo insmod statsmod-wheat.ko

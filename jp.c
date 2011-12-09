@@ -10,9 +10,6 @@
 #define BUFF_SIZE 256
 #define CMD_SIZE 100
 
-#define EXISTENT_FILE "exist"
-#define NON_EXISTENT_FILE "smoke"
-
 #define N_SUCCESS 5
 #define N_FAIL 7
 
@@ -185,23 +182,6 @@ int main() {
     }
   }
 
-  /* Generate succesful clone */
-
-  /* Generate failed clone */
-
-
-
-  /* Public interface */
-
-  /* PI: get_stats */
-
-  /* PI: freeze_stats */
-
-  /* PI: microwave_stats */
-
-  /* PI: reset_stats */
-
-
   smr = open("/dev/smr", O_RDWR);
   if (smr < 0) {
     printf("\t Failed opening smr device\n");
@@ -218,9 +198,9 @@ int main() {
   printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
          stats.total, stats.success, stats.fail, stats.time);
 
-  printf("\tTesting ioctl on device smr, change to WRITE stats: \n");
-  printf("\tShould show values greater than the previous one +8 in success. \n");
-  ioctl(smr, CHANGE_SYSCALL, WRITE);
+  printf("\tTesting ioctl on device smr, change to CLONE stats: \n");
+  printf("\tShould show %d success and 0 fail (2nd popen & fork in jp.c code). \n", 2);
+  ioctl(smr, CHANGE_SYSCALL, CLONE);
   foo = read(smr, &stats, sizeof(struct t_info));
   if (foo != sizeof(struct t_info)) {
     printf("\tSomething went wrong reading stats using smr device.\n");
@@ -231,23 +211,40 @@ int main() {
 
   childpid = fork();
 
-  if (childpid == 0) { //Child
-    foo = open("/dev/null", O_WRONLY);
-    if (foo < 0) {
-      printf("Child failed opening /dev/null in write mode.\n");
-      exit(1);
-    }
-    for (i = 0; i < N_SUCCESS; i++) {
-      
-    }
-    close(foo);
+  if (childpid == 0) { /* Child */
+    printf("\t[CHILD] I'm the child and I have stats copied from my father but he will reset them.\n");
     while(1);
   }
-  printf("\tTesting ioctl on device smr, changint to pid %d that will do %d successful writes and 0 fails. \n", childpid, N_SUCCESS);
-  
+  printf("\tTesting ioctl on device smr, changing to pid %d and resseting them.\n", childpid);
+  foo = ioctl(smr, CHANGE_PROCESS, &childpid);
+  if (foo < 0) {
+    printf("\tError in ioctl changing process to child.\n");
+  }
 
+  foo = ioctl(smr, RESET_CUR_PROCESS, NULL);
+  if (foo < 0) {
+    printf("\tError in ioctl reseting child stats.\n");
+  }
 
-  printf("\tIn dmesg all stats of this process must have %d success and %d fails.\n");
+  foo = read(smr, &stats, sizeof(struct t_info));
+  if (foo != sizeof(struct t_info)) {
+    printf("\tSomething went wrong reading stats using smr device.\n");
+    exit(1);
+  }
+  printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
+         stats.total, stats.success, stats.fail, stats.time);
+
+  printf("\tShowing again self stats.\n");
+  ioctl(smr, CHANGE_PROCESS, &selfpid);
+  foo = read(smr, &stats, sizeof(struct t_info));
+  if (foo != sizeof(struct t_info)) {
+    printf("\tSomething went wrong reading stats using smr device.\n");
+    exit(1);
+  }
+  printf("\tTotal: %d\n \tSuccess: %d\n \tFail: %d\n \tTime: %u\n\n", \
+         stats.total, stats.success, stats.fail, stats.time);
+
+  printf("\tIn dmesg all stats of this process (except CLONE) must have %d success and %d fails. \n", N_SUCCESS, N_FAIL);
 
   printf("\tOnce you have checked all the values type \"make rmmod\" in other shell and kill this process.\n");
 

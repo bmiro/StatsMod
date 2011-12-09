@@ -104,8 +104,9 @@ int smr_ioctl (struct inode *i, struct file *f, unsigned int arg1, unsigned long
         error = copy_from_user(&p, (void *)arg2, sizeof(unsigned long));
         if (error < 0) return error;
 
-        error = (int)find_task_by_pid(p);
-        if (error < 0) return error;
+        error = (long)find_task_by_pid(p);
+        if ((int)error == NULL) return -ESRCH;
+
         pid = p;
       }
       break;
@@ -118,6 +119,7 @@ int smr_ioctl (struct inode *i, struct file *f, unsigned int arg1, unsigned long
     case RESET_CUR_PROCESS:
       for (c = 0; c < NUM_INTERCEPTED_CALLS; c++) {
         error = reset_stats(pid, c);
+        printk(KERN_DEBUG "pid: %d!", pid);
         if (error < 0) return error;
       }
       break;
